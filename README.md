@@ -1,4 +1,4 @@
-# Medical Assistant Website
+# Medical Assistant Website (Ignore What's Written Below)
 
 A web-based medical assistant platform that provides an interactive chat interface for users to communicate with an AI-powered medical assistant. The platform includes both client and admin interfaces for managing users and monitoring conversations.
 
