@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - Medical Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container chat-container-root">
+        <div class="chat-header">
+            <h2>Medical Assistant Chat - John Doe</h2>
+            <button class="logout-btn" onclick="clearChat()">Clear Chat</button>
+        </div>
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message system">Welcome to the Medical Assistant. How can I help you today?</div>
+            </div>
+            <div class="chat-input">
+                <textarea id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)"></textarea>
+                <button id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Always set user as John Doe
+        localStorage.setItem('userEmail', 'john.doe@example.com');
+        localStorage.setItem('userName', 'John Doe');
+
+        // Mark John Doe as active when chat.html is open
+        localStorage.setItem('johnDoeActive', 'true');
+        window.addEventListener('beforeunload', function() {
+            localStorage.setItem('johnDoeActive', 'false');
+        });
+
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = '<div class="message system">Welcome to the Medical Assistant. How can I help you today?</div>';
+            localStorage.removeItem('chatHistory');
+            fetch('http://localhost:5050/api/chat/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = messageInput.value.trim();
+            
+            if (message) {
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                sendButton.textContent = 'Sending...';
+
+                addMessage(message, 'user');
+                messageInput.value = '';
+
+                // Save user message to chatHistory in localStorage
+                saveChatMessage({
+                    user: 'John Doe',
+                    email: 'john.doe@example.com',
+                    role: 'user',
+                    text: message,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Send to backend and get AI response
+                fetch('http://localhost:5050/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    addMessage(data.response, 'assistant');
+                    saveChatMessage({
+                        user: 'Medical Assistant',
+                        email: 'assistant@medicalassistant.com',
+                        role: 'assistant',
+                        text: data.response,
+                        timestamp: new Date().toISOString()
+                    });
+                })
+                .catch(() => {
+                    const errorMsg = "Sorry, I'm having trouble connecting to the AI right now.";
+                    addMessage(errorMsg, 'assistant');
+                    saveChatMessage({
+                        user: 'Medical Assistant',
+                        email: 'assistant@medicalassistant.com',
+                        role: 'assistant',
+                        text: errorMsg,
+                        timestamp: new Date().toISOString()
+                    });
+                })
+                .finally(() => {
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    sendButton.textContent = 'Send';
+                    messageInput.focus();
+                });
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function addMessage(text, type) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function saveChatMessage(msg) {
+            let history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+            history.push(msg);
+            localStorage.setItem('chatHistory', JSON.stringify(history));
+        }
+
+        // Focus the input field when page loads
+        document.getElementById('messageInput').focus();
+    </script>
+</body>
+</html> 
