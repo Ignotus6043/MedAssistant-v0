@@ -36,12 +36,10 @@ USERS_FILE = 'users.json'
 ADMIN_EMAIL = "admin@medicalassistant.com"
 ADMIN_PASSWORD = "MedAssist@nyu1"
 
-# In-memory storage for chats
-chats = {}
-
-# In-memory storage for conversation context
-conversation_context = {}
-chat_records = []
+# In-memory trackers
+conversation_context = {}  # {username: [history]}
+chat_records = []          # list of message dicts
+online_users = {}          # {username: last_seen_datetime}
 
 def get_initial_prompt():
     return '''1. 你是一位医疗助手，请通过与患者的对话提问，判断其感冒类型，并在必要时推荐常用药物与护理建议。你需要根据患者的描述逐步缩小范围，直到能够明确诊断。请避免重复提问，避免给出过早或错误的诊断。
@@ -140,19 +138,36 @@ def save_users(users):
 # Initialize users
 users = load_users()
 
+def generate_token(username: str, is_admin: bool = False):
+    """Generate a JWT token valid for 7 days."""
+    return jwt.encode({
+        'username': username,
+        'is_admin': is_admin,
+        'exp': datetime.utcnow() + timedelta(days=7)
+    }, SECRET_KEY, algorithm='HS256')
+
 def token_required(f):
+    """Decorator to ensure the request carries a valid JWT token."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token:
+        # Allow OPTIONS pre-flight requests without token
+        if request.method == 'OPTIONS':
+            return f(None, *args, **kwargs)
+
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
             return jsonify({'message': 'Token is missing'}), 401
+
+        token = auth_header.split(' ')[1]
         try:
-            token = token.split(' ')[1]
             data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            current_user = users.get(data['email'])
+            username = data['username']
+            current_user = users.get(username)
             if not current_user:
                 return jsonify({'message': 'User not found'}), 401
-        except:
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired'}), 401
+        except Exception:
             return jsonify({'message': 'Token is invalid'}), 401
         return f(current_user, *args, **kwargs)
     return decorated
@@ -176,42 +191,59 @@ def admin_required(f):
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
-    email = data.get('email')
+    username = data.get('username')
     password = data.get('password')
-    name = data.get('name')
+    name = data.get('name', username)
 
-    if not all([email, password, name]):
-        return jsonify({"success": False, "message": "All fields are required"}), 400
+    if not username or not password:
+        return jsonify({"success": False, "message": "Username and password are required"}), 400
 
-    if email in users:
-        return jsonify({"success": False, "message": "Email already registered"}), 400
+    if username in users:
+        return jsonify({"success": False, "message": "Username already exists"}), 400
 
-    # Store user
-    users[email] = {
-        'email': email,
-        'password': password,  # In production, hash the password
+    # Hash the password for secure storage
+    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    users[username] = {
+        'username': username,
+        'password': hashed_pw,
         'name': name
     }
 
-    return jsonify({"success": True, "message": "Registration successful"}), 201
+    save_users(users)
+
+    token = generate_token(username)
+
+    return jsonify({
+        "success": True,
+        "message": "Registration successful",
+        "token": token,
+        "name": name
+    }), 201
 
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
-    email = data.get('email')
+    username = data.get('username')
     password = data.get('password')
 
-    if not all([email, password]):
-        return jsonify({"success": False, "message": "Email and password are required"}), 400
+    if not all([username, password]):
+        return jsonify({"success": False, "message": "Username and password are required"}), 400
 
-    user = users.get(email)
-    if not user or user['password'] != password:
+    user = users.get(username)
+    if not user:
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+    if not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+        return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+    token = generate_token(username)
 
     return jsonify({
         "success": True,
         "message": "Login successful",
-        "name": user['name']
+        "name": user['name'],
+        "token": token
     })
 
 @app.route('/api/admin/login', methods=['POST'])
@@ -221,12 +253,25 @@ def admin_login():
     password = data.get('password')
     
     if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
-        return jsonify({"success": True, "message": "Login successful"})
+        token = generate_token("admin", is_admin=True)
+        return jsonify({"success": True, "message": "Login successful", "token": token})
     else:
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
-@app.route('/api/chat', methods=['POST', 'OPTIONS'])
-def chat():
+@app.route('/api/chat', methods=['OPTIONS'])
+def chat_preflight():
+    """Handle CORS pre-flight requests without auth."""
+    return '', 200
+
+@app.route('/api/chat', methods=['POST'])
+@token_required
+def chat(current_user):
+    # Use authenticated username as the conversation id
+    user_id = current_user['username']
+
+    # Mark user as online / update last_seen
+    online_users[user_id] = datetime.utcnow()
+
     print(f"Received {request.method} request to /api/chat")
     print(f"Origin: {request.headers.get('Origin', 'None')}")
 
@@ -242,14 +287,16 @@ def chat():
         return jsonify({'error': 'No message provided'}), 400
 
     # ---------- 构建对话上下文（记忆） ----------
-    user_id = data.get('user_id') or request.remote_addr
     if user_id not in conversation_context:
         conversation_context[user_id] = []  # 存储每轮 {user, assistant}
 
     history = conversation_context[user_id]
 
     # 生成历史文本
-    history_lines = [f"用户: {h['user']}" for h in history]
+    history_lines = []
+    for h in history:
+        history_lines.append(f"用户: {h['user']}")
+        history_lines.append(f"助手: {h['assistant']}")
     history_text = "\n".join(history_lines)
     concise_rule = "医生口吻，回复≤60字；信息不足时仅问一个新的关键问题(单句，无序号无客套)，禁止总结解释；收集完必要信息后再给出诊断与用药建议，当收集信息有矛盾时，向用户确认或者考虑可能性。"
 
@@ -312,6 +359,9 @@ def chat():
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
 
+        # Update last_seen again after processing
+        online_users[user_id] = datetime.utcnow()
+
         return jsonify({'response': ai_response})
     except requests.exceptions.HTTPError as e:
         print(f'DeepSeek API HTTP Error: {e}')
@@ -326,21 +376,23 @@ def chat():
         print(f'Error type: {type(e).__name__}')
         return jsonify({'response': "Sorry, I'm having trouble connecting to the AI right now."}), 500
 
-@app.route('/api/chat/history', methods=['GET'])
 @token_required
 def chat_history(current_user):
-    user_chats = [chats[chat_id] for chat_id in current_user['chats']]
-    return jsonify(user_chats)
+    history = conversation_context.get(current_user['username'], [])
+    return jsonify(history)
 
 @app.route('/api/admin/stats', methods=['GET'])
 @admin_required
 def admin_stats():
+    cleanup_online_users()
     total_users = len(users)
-    active_chats = len([c for c in chats.values() if (datetime.utcnow() - datetime.fromisoformat(c['timestamp'])).days < 1])
-    total_messages = len(chats)
+    active_users = len(online_users)
+    active_chats = len(conversation_context)
+    total_messages = len(chat_records)
     
     return jsonify({
         'totalUsers': total_users,
+        'activeUsers': active_users,
         'activeChats': active_chats,
         'totalMessages': total_messages
     })
@@ -348,12 +400,15 @@ def admin_stats():
 @app.route('/api/admin/users', methods=['GET'])
 @admin_required
 def admin_users():
-    user_list = [{
-        'id': email,
-        'name': user['name'],
-        'email': email,
-        'status': 'active'
-    } for email, user in users.items()]
+    cleanup_online_users()
+    user_list = []
+    for username, info in users.items():
+        status = 'active' if username in online_users else 'offline'
+        user_list.append({
+            'username': username,
+            'name': info.get('name', username),
+            'status': status
+        })
     return jsonify(user_list)
 
 @app.route('/api/admin/chats', methods=['GET'])
@@ -380,12 +435,30 @@ def test():
     return jsonify({'status': 'Flask server is running with CORS!'})
 
 @app.route('/api/chat/clear', methods=['POST'])
-def clear_chat():
-    data = request.get_json() or {}
-    user_id = data.get('user_id') or request.remote_addr
+@token_required
+def clear_chat(current_user):
+    user_id = current_user['username']
     if user_id in conversation_context:
         del conversation_context[user_id]
         print(f"Conversation history for {user_id} cleared")
+    return jsonify({'success': True})
+
+# ----------------- User session helpers -----------------
+
+ONLINE_THRESHOLD_SEC = 300  # 5 minutes
+
+def cleanup_online_users():
+    """Remove users who have been inactive for longer than threshold."""
+    stale = [u for u, ts in online_users.items() if (datetime.utcnow() - ts).total_seconds() > ONLINE_THRESHOLD_SEC]
+    for u in stale:
+        del online_users[u]
+
+@app.route('/api/logout', methods=['POST'])
+@token_required
+def logout(current_user):
+    username = current_user['username']
+    # Remove from online list
+    online_users.pop(username, None)
     return jsonify({'success': True})
 
 if __name__ == '__main__':

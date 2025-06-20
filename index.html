@@ -8,8 +8,12 @@
 </head>
 <body>
     <script>
-        // Redirect to chat interface immediately
-        window.location.href = 'chat.html';
+        const token = localStorage.getItem('token');
+        if (token) {
+            window.location.href = 'chat.html';
+        } else {
+            window.location.href = 'login.html';
+        }
     </script>
 </body>
 </html> 
