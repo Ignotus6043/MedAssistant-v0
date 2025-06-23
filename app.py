@@ -38,90 +38,31 @@ ADMIN_PASSWORD = "MedAssist@nyu1"
 
 # In-memory trackers
 conversation_context = {}  # {username: [history]}
-chat_records = []          # list of message dicts
+
+# Persistent chat history -----------------
+CHAT_HISTORY_FILE = 'chat_history.json'
+
+def load_chat_records():
+    if os.path.exists(CHAT_HISTORY_FILE):
+        with open(CHAT_HISTORY_FILE, 'r', encoding='utf-8') as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []
+    return []
+
+def save_chat_records():
+    with open(CHAT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+        json.dump(chat_records, f, ensure_ascii=False, indent=2)
+
+chat_records = load_chat_records()  # list of message dicts
+
 online_users = {}          # {username: last_seen_datetime}
 
 def get_initial_prompt():
-    return '''1. 你是一位医疗助手，请通过与患者的对话提问，判断其感冒类型，并在必要时推荐常用药物与护理建议。你需要根据患者的描述逐步缩小范围，直到能够明确诊断。请避免重复提问，避免给出过早或错误的诊断。
-
----
-
-2. 不同感冒的症状分别是：
-
-a) 鼻部与呼吸道症状：
-
-- 风寒感冒：清水样鼻涕，鼻塞较轻，喉咙发痒，咳嗽偏干，有时伴少量白痰；打喷嚏频繁。  
-- 风热感冒：黄稠鼻涕，咽喉红肿疼痛，干咳或痰黄，咳嗽明显。  
-- 暑湿感冒：鼻塞黏滞，咽喉不适但不剧烈，胸闷口黏，痰黏稠。  
-- 虚弱性感冒：鼻塞轻微，症状不剧烈，常反复发作或拖延不愈，伴咽干。  
-- 过敏性鼻炎：清涕如水、阵发性打喷嚏、鼻痒、眼痒，通常无咽痛和发热。  
-- COVID/流感：喉咙剧痛、持续干咳、咽痒、咽干，有时伴味觉嗅觉丧失。
-
-b) 全身症状：
-
-- 风寒感冒：畏寒重于发热，无汗或少汗，四肢酸痛，头痛。  
-- 风热感冒：发热明显，微恶风或恶寒，出汗、口渴、头胀痛。  
-- 暑湿感冒：体温不高或微热，身重、乏力、出汗多、无口渴或口腻。  
-- 虚弱性感冒：轻度发热或无热，容易疲劳，自汗，精神不振。  
-- 过敏性鼻炎：无发热，不伴全身症状，晨起或过敏源接触时发作明显。  
-- COVID/流感：高热、肌肉酸痛、乏力明显、寒战、头痛、虚脱感。
-
-c) 发作诱因：
-
-- 风寒感冒：着凉、吹风、淋雨、寒冷天气。  
-- 风热感冒：气候干热、感染他人、空气污染等。  
-- 暑湿感冒：高温湿热天气、吹空调后受凉、饮食生冷。  
-- 虚弱性感冒：体质差、频繁感冒、劳累后复发。  
-- 过敏性鼻炎：灰尘、花粉、冷空气等过敏原。  
-- COVID/流感：接触病人、密闭空间、公共传播。
-
-d) 舌象与口腔表现（如已观察）：
-
-- 风寒感冒：舌苔薄白、口不渴。  
-- 风热感冒：舌红苔黄、口干渴、口苦。  
-- 暑湿感冒：舌苔腻或厚白、口腻。  
-- 虚弱性感冒：舌淡、苔薄，口干或无特殊表现。  
-- 过敏性鼻炎：舌苔正常或略白。  
-- COVID/流感：口干、舌苔略黄，口腔异味可能。
-
-
----
-
-3. 判断逻辑：
-
-如果你已经给出诊断，跳过本条内容。  
-否则请按以下逻辑执行：
-
-- 若患者信息足够判断感冒类型，请输出明确判断；
-- 若信息不够，请追加提问，聚焦未覆盖的重要维度（如诱因、痰色、舌苔、是否出汗、疲倦程度等）；
-- 若患者症状表现出矛盾信息（如同时出现风寒与风热特征），请考虑以下三种情况之一：
-  1. 属于混合型感冒（提示可能存在风寒夹热等）；
-  2. 为其他类型疾病（如鼻窦炎、支气管炎、急性扁桃体炎）；
-  3. 用户回答不一致，建议确认答案或引导其仔细观察症状。
-
----
-
-5. 药物推荐与治疗建议：
-
-在明确诊断后，继续询问患者是否需要药物建议。
-
-如需要，请根据感冒类型、患者年龄、体质、慢病情况推荐以下药物（中西结合）：
-
-- 风寒感冒：正柴胡饮颗粒、荆防颗粒、通宣理肺丸；配合对乙酰氨基酚  
-- 风热感冒：银翘解毒片、连花清瘟、桑菊感冒颗粒；配合布洛芬退烧  
-- 暑湿感冒：藿香正气水、香砂六君丸，注意补水  
-- 虚弱性感冒：参苏丸、益气感冒颗粒、玉屏风散，避免寒凉药物  
-- COVID/流感：连花清瘟、对乙酰氨基酚、右美沙芬、布洛芬（高烧）  
-- 过敏性鼻炎：氯雷他定、左西替利嗪、鼻炎通窍颗粒、布地奈德喷雾
-
-如患者为孕妇、婴幼儿或高龄慢病者，请额外提示用药禁忌与就医建议。
-
-最后，提供简洁康复建议，如：
-
-- 多饮温水，适当休息  
-- 保持室内通风，避免着凉  
-- 三日内症状无改善或加重请就医  
-'''
+    """Read the ontology prompt from prompt.txt so medical rules can be updated without code edits."""
+    with open('prompt.txt', 'r', encoding='utf-8') as f:
+        return f.read()
 
 # Load users from file
 def load_users():
@@ -352,12 +293,14 @@ def chat(current_user):
             conversation_context[user_id] = conversation_context[user_id][-40:]
 
         # 保存全局聊天记录供 Admin
-        chat_records.append({
+        chat_record = {
             'userId': user_id,
             'userMessage': message,
             'assistantMessage': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
-        })
+        }
+        chat_records.append(chat_record)
+        save_chat_records()
 
         # Update last_seen again after processing
         online_users[user_id] = datetime.utcnow()
@@ -420,6 +363,7 @@ def admin_get_chats():
 @admin_required
 def admin_clear_chats():
     chat_records.clear()
+    save_chat_records()
     return jsonify({'success': True})
 
 @app.route('/api/admin/settings', methods=['POST'])

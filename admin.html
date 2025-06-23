@@ -158,23 +158,57 @@
             } catch {}
         }
 
+        // ---------------- Populate user filter ----------------
+        async function populateUserFilter() {
+            const select = document.getElementById('userFilter');
+            select.innerHTML = '<option value="">All Users</option>';
+            try {
+                const users = await apiGet('/api/admin/users');
+                users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.username;
+                    opt.textContent = u.username;
+                    select.appendChild(opt);
+                });
+            } catch {}
+        }
+
         // ---------------- Chat History ----------------
         async function renderChatHistory() {
             const chatHistoryDiv = document.getElementById('chatHistory');
             chatHistoryDiv.innerHTML = '';
             try {
                 const chats = await apiGet('/api/admin/chats');
-                if (chats.length === 0) {
+                const selectedUser = document.getElementById('userFilter').value;
+                const dateFilter = document.getElementById('dateFilter').value;
+                const filtered = chats.filter(msg => {
+                    const userOk = selectedUser ? msg.userId === selectedUser : true;
+                    const dateOk = dateFilter ? msg.timestamp.startsWith(dateFilter) : true;
+                    return userOk && dateOk;
+                });
+                if (filtered.length === 0) {
                     chatHistoryDiv.innerHTML = '<div>No chat history.</div>';
                     return;
                 }
-                chats.forEach(msg => {
+                filtered.forEach(msg => {
                     const msgDiv = document.createElement('div');
                     msgDiv.className = 'message';
-                    msgDiv.innerHTML = `<strong>${msg.userId}:</strong> ${msg.userMessage} <br><em>${msg.assistantMessage}</em> <span style='color:#888;font-size:12px;float:right;'>${new Date(msg.timestamp).toLocaleString()}</span>`;
+                    msgDiv.innerHTML = `<strong>${msg.userId}:</strong> ${msg.userMessage}<br><em>${msg.assistantMessage}</em> <span style='color:#888;font-size:12px;float:right;'>${new Date(msg.timestamp).toLocaleString()}</span>`;
                     chatHistoryDiv.appendChild(msgDiv);
                 });
             } catch {}
+        }
+
+        // Update chat history when filter changes
+        document.getElementById('userFilter').addEventListener('change', renderChatHistory);
+        document.getElementById('dateFilter').addEventListener('change', renderChatHistory);
+
+        async function clearHistory() {
+            await fetch('http://localhost:5050/api/admin/chats/clear', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            renderChatHistory();
         }
 
         // ---------------- Navigation ----------------
@@ -191,10 +225,16 @@
             });
         });
 
-        // Initial load
-        renderDashboardStats();
-        renderUsersTable();
-        renderChatHistory();
+        // Initial load wrapped为异步 IIFE，避免顶层 await 错误
+        (async () => {
+            await populateUserFilter();
+            renderDashboardStats();
+            renderUsersTable();
+            renderChatHistory();
+        })();
+
+        // Bind clear history button
+        document.getElementById('clearHist').addEventListener('click', clearHistory);
 
         // Periodic refresh every 10 seconds
         setInterval(() => {
