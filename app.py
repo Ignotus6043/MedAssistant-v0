@@ -8,6 +8,7 @@ import requests
 from functools import wraps
 from dotenv import load_dotenv
 from flask_cors import CORS
+import time
 
 # Load environment variables
 load_dotenv()
@@ -146,10 +147,28 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+# ----------------- Simple rate limiting -----------------
+RATE_LIMIT_WINDOW_SEC = 12 * 60 * 60  # 12 hours
+RATE_LIMIT_MAX = 100
+ip_rate_table = {}  # {ip: {'start': epoch, 'count': int}}
+
+def check_rate_limit(ip: str):
+    """Return True if within limit, False if exceeded."""
+    now = time.time()
+    rec = ip_rate_table.get(ip)
+    if not rec or now - rec['start'] > RATE_LIMIT_WINDOW_SEC:
+        # New window
+        ip_rate_table[ip] = {'start': now, 'count': 1}
+        return True
+    if rec['count'] >= RATE_LIMIT_MAX:
+        return False
+    rec['count'] += 1
+    return True
+
 @app.route('/')
 def index():
-    # Serve chat.html from the current directory
-    return send_from_directory('.', 'chat.html')
+    # Serve login.html by default; chat.html is loaded after successful login from frontend
+    return send_from_directory('.', 'login.html')
 
 @app.route('/<path:filename>')
 def static_files(filename):
@@ -247,6 +266,11 @@ def chat(current_user):
     if request.method == 'OPTIONS':
         print("Handling OPTIONS preflight request")
         return '', 200
+
+    # ---- Rate limiting per IP ----
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if not check_rate_limit(client_ip):
+        return jsonify({'response': 'Rate limit reached, try again later.'}), 429
 
     data = request.get_json()
     message = data.get('message', '')
