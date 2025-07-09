@@ -39,10 +39,13 @@
             document.getElementById('chatTitle').textContent = `Medical Assistant Chat - ${userName}`;
         }
 
+        // Dynamic API base URL for local and production
+        const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
+
         // If page was reloaded (navigation type reload), automatically clear backend context and local chat history
         if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
             localStorage.removeItem('chatHistory');
-            fetch('http://localhost:5050/api/chat/clear', {
+            fetch(API_BASE + '/api/chat/clear', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -55,7 +58,7 @@
         function clearChat() {
             document.getElementById('chatMessages').innerHTML = '<div class="message system">Welcome to the Medical Assistant. How can I help you today?</div>';
             localStorage.removeItem('chatHistory');
-            fetch('http://localhost:5050/api/chat/clear', {
+            fetch(API_BASE + '/api/chat/clear', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -74,7 +77,7 @@
         function logout() {
             const token = localStorage.getItem('token');
             if (token) {
-                fetch('http://localhost:5050/api/logout', {
+                fetch(API_BASE + '/api/logout', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -112,7 +115,7 @@
                 });
 
                 // Send to backend and get AI response
-                fetch('http://localhost:5050/api/chat', {
+                fetch(API_BASE + '/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
