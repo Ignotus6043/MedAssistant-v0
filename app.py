@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import bcrypt
 import jwt
 import os
@@ -133,6 +133,16 @@ def admin_required(f):
             return jsonify({'message': 'Token is invalid'}), 401
         return f(*args, **kwargs)
     return decorated
+
+@app.route('/')
+def index():
+    # Serve chat.html from the current directory
+    return send_from_directory('.', 'chat.html')
+
+@app.route('/<path:filename>')
+def static_files(filename):
+    # Serve other static files (like styles.css) from the current directory
+    return send_from_directory('.', filename)
 
 @app.route('/api/register', methods=['POST'])
 def register():
