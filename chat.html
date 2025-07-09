@@ -39,6 +39,19 @@
             document.getElementById('chatTitle').textContent = `Medical Assistant Chat - ${userName}`;
         }
 
+        // If page was reloaded (navigation type reload), automatically clear backend context and local chat history
+        if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+            localStorage.removeItem('chatHistory');
+            fetch('http://localhost:5050/api/chat/clear', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({})
+            });
+        }
+
         function clearChat() {
             document.getElementById('chatMessages').innerHTML = '<div class="message system">Welcome to the Medical Assistant. How can I help you today?</div>';
             localStorage.removeItem('chatHistory');
@@ -151,7 +164,62 @@
             }
         }
 
+        function addAssistantMessage(text) {
+            const messagesDiv = document.getElementById('chatMessages');
+
+            // Parse deepseek raw text
+            const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+            let mainLine = '';
+            let mainIndex = -1;
+            let prefixes = ['最终答案:', '最终答案：', '行动:', '行动：'];
+            for (let i = lines.length - 1; i >= 0; i--) {
+                for (const p of prefixes) {
+                    if (lines[i].startsWith(p)) {
+                        mainLine = lines[i];
+                        mainIndex = i;
+                        break;
+                    }
+                }
+                if (mainIndex !== -1) break;
+            }
+            if (mainIndex === -1) {
+                // If no prefix found, treat last line as main answer
+                mainLine = lines[lines.length - 1];
+                mainIndex = lines.length - 1;
+            }
+            // Separate reasoning lines (before mainIndex) and main lines (from mainIndex)
+            const reasoningLines = lines.slice(0, mainIndex); // everything before main answer
+            const mainLines = lines.slice(mainIndex);         // main answer lines (could be multi-line)
+            const reasoningText = reasoningLines.join('\n');
+            const mainContentRaw = mainLines.join('\n').replace(/^最终答案[:：]?\s*/,'').replace(/^行动[:：]?\s*/,'').trim();
+
+            // Create collapsible reasoning box
+            const detailsEl = document.createElement('details');
+            detailsEl.style.margin = '10px';
+            const summaryEl = document.createElement('summary');
+            summaryEl.innerHTML = '<b>Reasoning &amp; Action</b>';
+            const preEl = document.createElement('pre');
+            preEl.style.whiteSpace = 'pre-wrap';
+            preEl.textContent = reasoningText;
+            detailsEl.appendChild(summaryEl);
+            detailsEl.appendChild(preEl);
+
+            // Create main answer bubble (preserve line breaks as <br>)
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'message assistant';
+            answerDiv.innerHTML = mainContentRaw.replace(/\n/g, '<br>');
+
+            messagesDiv.appendChild(detailsEl);
+            messagesDiv.appendChild(answerDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Modify addMessage to delegate to addAssistantMessage for assistant type
         function addMessage(text, type) {
+            if (type === 'assistant') {
+                addAssistantMessage(text);
+                return;
+            }
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;

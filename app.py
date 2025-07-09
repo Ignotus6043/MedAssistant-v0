@@ -59,9 +59,14 @@ chat_records = load_chat_records()  # list of message dicts
 
 online_users = {}          # {username: last_seen_datetime}
 
+# def get_initial_prompt():
+#     """Read the ontology prompt from prompt.txt so medical rules can be updated without code edits."""
+#     with open('prompt.txt', 'r', encoding='utf-8') as f:
+#         return f.read()
+
 def get_initial_prompt():
     """Read the ontology prompt from prompt.txt so medical rules can be updated without code edits."""
-    with open('prompt.txt', 'r', encoding='utf-8') as f:
+    with open('prompt_react_cn.txt', 'r', encoding='utf-8') as f:
         return f.read()
 
 # Load users from file
