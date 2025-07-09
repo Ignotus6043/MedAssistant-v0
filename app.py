@@ -32,9 +32,21 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', 'YOUR_DEEPSEEK_API_KEY')
 # File paths
 USERS_FILE = 'users.json'
 
-# Define admin credentials
-ADMIN_EMAIL = "admin@medicalassistant.com"
-ADMIN_PASSWORD = "MedAssist@nyu1"
+# ----------------- Admin credentials -----------------
+ADMIN_CRED_FILE = 'admin_credentials.txt'
+
+def load_admin_credentials():
+    if os.path.exists(ADMIN_CRED_FILE):
+        try:
+            with open(ADMIN_CRED_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('email'), data.get('password_hash')
+        except Exception as e:
+            print(f"Error loading admin credentials: {e}")
+    # Fallback to None values if file missing
+    return None, None
+
+ADMIN_EMAIL, ADMIN_PW_HASH = load_admin_credentials()
 
 # In-memory trackers
 conversation_context = {}  # {username: [history]}
@@ -208,7 +220,8 @@ def admin_login():
     email = data.get('email')
     password = data.get('password')
     
-    if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+    # Use stored hash comparison
+    if email == ADMIN_EMAIL and ADMIN_PW_HASH and bcrypt.checkpw(password.encode('utf-8'), ADMIN_PW_HASH.encode('utf-8')):
         token = generate_token("admin", is_admin=True)
         return jsonify({"success": True, "message": "Login successful", "token": token})
     else:

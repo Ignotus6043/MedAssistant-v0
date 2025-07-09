@@ -11,6 +11,9 @@
         // Always set admin as admin@medicalassistant.com
         localStorage.setItem('adminEmail', 'admin@medicalassistant.com');
         localStorage.setItem('adminName', 'Admin');
+
+        // Dynamic API base URL for local and production
+        const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
     </script>
 
     <div class="container admin-container-root">
@@ -119,7 +122,7 @@
 
         // ---------------- Fetch helpers ----------------
         function apiGet(path) {
-            return fetch(`http://localhost:5050${path}`, {
+            return fetch(API_BASE + path, {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             }).then(res => {
                 if (res.status === 401 || res.status === 403) {
@@ -204,7 +207,7 @@
         document.getElementById('dateFilter').addEventListener('change', renderChatHistory);
 
         async function clearHistory() {
-            await fetch('http://localhost:5050/api/admin/chats/clear', {
+            await fetch(API_BASE + '/api/admin/chats/clear', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
