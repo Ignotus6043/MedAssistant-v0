@@ -32,6 +32,7 @@
                     <button class="nav-btn" data-section="users">Users</button>
                     <button class="nav-btn" data-section="chats">Chat History</button>
                     <button class="nav-btn" data-section="settings">Settings</button>
+                    <button class="nav-btn" data-section="meddb">Medical DB</button>
                 </nav>
             </div>
 
@@ -109,6 +110,14 @@
                         </div>
                         <button type="submit" class="btn-primary">Save Settings</button>
                     </form>
+                </section>
+
+                <!-- Medical DB Section -->
+                <section id="meddb" class="admin-section">
+                    <h2>Medical Knowledge Base</h2>
+                    <p>Below is the raw JSON for the medical database. Edit with caution.</p>
+                    <textarea id="medDbJson" style="width:100%;height:400px;font-family:monospace;"></textarea>
+                    <button id="saveMedDb" class="btn-primary" style="margin-top:10px;">Save Database</button>
                 </section>
             </div>
         </main>
@@ -225,6 +234,8 @@
                 if (sectionId === 'dashboard') renderDashboardStats();
                 if (sectionId === 'users') renderUsersTable();
                 if (sectionId === 'chats') renderChatHistory();
+                if (sectionId === 'settings') renderDashboardStats();
+                if (sectionId === 'meddb') loadMedicalDb();
             });
         });
 
@@ -239,6 +250,42 @@
         // Bind clear history button
         document.getElementById('clearHist').addEventListener('click', clearHistory);
 
+        // ---------------- Medical DB ----------------
+        async function loadMedicalDb() {
+            try {
+                const db = await apiGet('/api/admin/medical_db');
+                document.getElementById('medDbJson').value = JSON.stringify(db, null, 2);
+            } catch(err) {
+                alert('Failed to load DB');
+            }
+        }
+
+        async function saveMedicalDb() {
+            const jsonText = document.getElementById('medDbJson').value;
+            let payload;
+            try {
+                payload = JSON.parse(jsonText);
+            } catch {
+                alert('JSON format error');
+                return;
+            }
+            try {
+                await fetch(API_BASE + '/api/admin/medical_db', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                alert('Database saved.');
+            } catch {
+                alert('Save failed');
+            }
+        }
+
+        document.getElementById('saveMedDb').addEventListener('click', saveMedicalDb);
+
         // Periodic refresh every 10 seconds
         setInterval(() => {
             renderDashboardStats();
@@ -246,7 +293,7 @@
             if (document.getElementById('chats').classList.contains('active')) {
                 renderChatHistory();
             }
-        }, 10000);
+        }, 60000);
 
         function logout() {
             localStorage.removeItem('isAdmin');

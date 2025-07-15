@@ -72,15 +72,71 @@ chat_records = load_chat_records()  # list of message dicts
 
 online_users = {}          # {username: last_seen_datetime}
 
-# def get_initial_prompt():
-#     """Read the ontology prompt from prompt.txt so medical rules can be updated without code edits."""
-#     with open('prompt.txt', 'r', encoding='utf-8') as f:
-#         return f.read()
+MED_DB_FILE = 'medical_db.json'
+
+# ----------------- Medical DB helpers -----------------
+
+def load_med_db():
+    if os.path.exists(MED_DB_FILE):
+        with open(MED_DB_FILE, 'r', encoding='utf-8') as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {"diseases": []}
+    return {"diseases": []}
+
+def save_med_db(db):
+    with open(MED_DB_FILE, 'w', encoding='utf-8') as f:
+        json.dump(db, f, ensure_ascii=False, indent=2)
+
+# --------------- Dynamic prompt builder ---------------
+
+def build_med_db_text(db):
+    """Convert JSON DB into prompt-friendly markdown."""
+    lines = []
+    systems = {}
+    for d in db.get('diseases', []):
+        systems.setdefault(d['system'], []).append(d)
+    # Sort systems alphabetically
+    for sys_code in sorted(systems.keys()):
+        sys_list = systems[sys_code]
+        # assume all items share system_name
+        lines.append(f"## {sys_code}. {sys_list[0]['system_name']}")
+        for item in sorted(sys_list, key=lambda x: x['id']):
+            lines.append(f"\n### {item['id']}. {item['name']}")
+            if item.get('judgement_factors'):
+                lines.append("\n#### 判断因子")
+                for lvl, factors in item['judgement_factors'].items():
+                    lvl_num = {'level1':'一级','level2':'二级','level3':'三级'}.get(lvl, lvl)
+                    lines.append(f"* **{lvl_num}**：")
+                    for fct in factors:
+                        lines.append(f"  - {fct}")
+            if item.get('decision_paths'):
+                lines.append("\n#### 决策路径")
+                for idx, path in enumerate(item['decision_paths'], 1):
+                    lines.append(f"{idx}. {path}")
+    return "\n".join(lines)
+
+# Override get_initial_prompt
 
 def get_initial_prompt():
-    """Read the ontology prompt from prompt.txt so medical rules can be updated without code edits."""
     with open('prompt_react_cn.txt', 'r', encoding='utf-8') as f:
-        return f.read()
+        template = f.read()
+
+    db_markdown = build_med_db_text(load_med_db())
+
+    # 首选占位符替换
+    if '[MEDICAL_DATABASE]' in template:
+        return template.replace('[MEDICAL_DATABASE]', db_markdown)
+
+    # 其次在 ## 医疗知识库 标记后插入
+    marker = '## 医疗知识库'
+    if marker in template:
+        before, after = template.split(marker, 1)
+        return before + marker + '\n\n' + db_markdown + '\n' + after
+
+    # 默认返回原模板
+    return template
 
 # Load users from file
 def load_users():
@@ -437,6 +493,19 @@ def clear_chat(current_user):
     if user_id in conversation_context:
         del conversation_context[user_id]
         print(f"Conversation history for {user_id} cleared")
+    return jsonify({'success': True})
+
+# ----------------- Admin endpoints for medical db -----------------
+
+@app.route('/api/admin/medical_db', methods=['GET', 'POST'])
+@admin_required
+def admin_medical_db():
+    if request.method == 'GET':
+        return jsonify(load_med_db())
+    data = request.get_json()
+    if not data or 'diseases' not in data:
+        return jsonify({'message': 'Invalid payload'}), 400
+    save_med_db(data)
     return jsonify({'success': True})
 
 # ----------------- User session helpers -----------------
