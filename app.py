@@ -70,6 +70,24 @@ def save_chat_records():
 
 chat_records = load_chat_records()  # list of message dicts
 
+# ----------------- Patient history -----------------
+PATIENT_HISTORY_FILE = 'patient_history.json'
+
+def load_patient_histories():
+    if os.path.exists(PATIENT_HISTORY_FILE):
+        with open(PATIENT_HISTORY_FILE, 'r', encoding='utf-8') as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+def save_patient_histories(data):
+    with open(PATIENT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+patient_histories = load_patient_histories()  # {username: [ {user, assistant, timestamp} ]}
+
 online_users = {}          # {username: last_seen_datetime}
 
 MED_DB_FILE = 'medical_db.json'
@@ -349,7 +367,17 @@ def chat(current_user):
     history_text = "\n".join(history_lines)
     concise_rule = "医生口吻，回复≤60字；信息不足时仅问一个新的关键问题(单句，无序号无客套)，禁止总结解释；收集完必要信息后再给出诊断与用药建议，当收集信息有矛盾时，向用户确认或者考虑可能性。"
 
-    system_history = f"{concise_rule}\n\n以下是此前对话历史：\n{history_text}"
+    # 注入跨会话就诊历史
+    pat_hist = patient_histories.get(user_id, [])
+    pat_lines = []
+    for itm in pat_hist:
+        pat_lines.append(f"患者: {itm['user']}")
+        pat_lines.append(f"医生: {itm['assistant']}")
+    pat_text = "\n".join(pat_lines) if pat_lines else '无'
+
+    patient_block = f"该用户此前的就诊历史：{pat_text}"
+
+    system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}"
 
     messages = [
         {"role": "system", "content": get_initial_prompt()},
@@ -410,6 +438,14 @@ def chat(current_user):
         chat_records.append(chat_record)
         save_chat_records()
 
+        # ----------- 保存就诊历史 -----------
+        patient_histories.setdefault(user_id, []).append({
+            'user': message,
+            'assistant': ai_response,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        })
+        save_patient_histories(patient_histories)
+
         # Update last_seen again after processing
         online_users[user_id] = datetime.utcnow()
 
@@ -431,6 +467,33 @@ def chat(current_user):
 def chat_history(current_user):
     history = conversation_context.get(current_user['username'], [])
     return jsonify(history)
+
+@app.route('/api/history', methods=['GET'])
+@token_required
+def get_history(current_user):
+    return jsonify(patient_histories.get(current_user['username'], []))
+
+@app.route('/api/history/clear', methods=['POST'])
+@token_required
+def clear_history_endpoint(current_user):
+    username = current_user['username']
+    
+    # ================= COMPLETE HISTORY CLEARANCE =================
+    # 1. Clear persistent history
+    patient_histories[username] = []
+    save_patient_histories(patient_histories)
+    
+    # 2. Clear current session context
+    if username in conversation_context:
+        del conversation_context[username]
+    
+    # 3. Clear chat records for admin view
+    global chat_records
+    chat_records = [r for r in chat_records if r['userId'] != username]
+    save_chat_records()
+    # ================= END FIX =================
+    
+    return jsonify({'success': True})
 
 @app.route('/api/admin/stats', methods=['GET'])
 @admin_required
@@ -524,6 +587,8 @@ def logout(current_user):
     username = current_user['username']
     # Remove from online list
     online_users.pop(username, None)
+    # 持久化就诊历史
+    save_patient_histories(patient_histories)
     return jsonify({'success': True})
 
 if __name__ == '__main__':

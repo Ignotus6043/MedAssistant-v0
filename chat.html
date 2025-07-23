@@ -11,8 +11,8 @@
         <div class="chat-header">
             <h2 id="chatTitle">Medical Assistant Chat</h2>
             <div>
-                <button class="logout-btn" onclick="clearChat()">Clear Chat</button>
-                <button class="logout-btn" onclick="logout()" style="margin-left:10px;">Logout</button>
+                <!-- Clear Chat button removed -->
+                <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
         <div class="chat-container">
@@ -55,23 +55,52 @@
             });
         }
 
-        function clearChat() {
-            document.getElementById('chatMessages').innerHTML = '<div class="message system">Welcome to the Medical Assistant. How can I help you today?</div>';
-            localStorage.removeItem('chatHistory');
-            fetch(API_BASE + '/api/chat/clear', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({})
-            })
-            .then(res => {
-                if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('token');
-                    window.location.href = 'login.html';
+        // ---------------- Patient history revisit check ----------------
+        async function checkRevisit() {
+            try {
+                console.log('Checking revisit...');
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log('No token, skipping revisit check');
+                    return;
                 }
-            });
+                
+                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
+                console.log('Fetching history from:', API_BASE + '/api/history');
+                const response = await fetch(API_BASE + '/api/history', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                console.log('History response status:', response.status);
+                if (response.ok) {
+                    const history = await response.json();
+                    console.log('History received:', history);
+                    if (history.length > 0) {
+                        console.log('History found, showing dialog');
+                        // Use modern dialog instead of basic confirm
+                        const isReturning = window.confirm('检测到您之前的就诊记录。您是复诊患者吗？\n\n• 点击"确定"保留就诊历史\n• 点击"取消"清除历史并开始新就诊');
+                        if (!isReturning) {
+                            // Clear both persistent history and session context
+                            await fetch(API_BASE + '/api/history/clear', {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            
+                            // Also clear current session context
+                            await fetch(API_BASE + '/api/chat/clear', {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            
+                            console.log('就诊历史已清除');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('历史检查错误:', error);
+                // Fallback to ensure clean start
+                localStorage.removeItem('chatHistory');
+            }
         }
 
         function logout() {
@@ -238,7 +267,46 @@
         }
 
         // Focus the input field when page loads
-        document.getElementById('messageInput').focus();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Redirect to login page if no auth token
+            const token = localStorage.getItem('token');
+            const userName = localStorage.getItem('username') || localStorage.getItem('userName');
+            if (!token) {
+                window.location.href = 'login.html';
+            }
+
+            // Update chat title with user name if available
+            if (userName) {
+                document.getElementById('chatTitle').textContent = `Medical Assistant Chat - ${userName}`;
+            }
+
+            // Dynamic API base URL for local and production
+            const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
+
+            // If page was reloaded (navigation type reload), automatically clear backend context and local chat history
+            if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+                localStorage.removeItem('chatHistory');
+                fetch(API_BASE + '/api/chat/clear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({})
+                });
+            }
+
+            // ================= GUARANTEED HISTORY CHECK =================
+            // First: Clear any existing local chat history
+            localStorage.removeItem('chatHistory');
+            
+            // Second: Check server-side history
+            await checkRevisit();  // This will now show the dialog
+            
+            // Third: Focus input after history check completes
+            document.getElementById('messageInput').focus();
+            // ================= END FIX =================
+        });
     </script>
 </body>
 </html> 
