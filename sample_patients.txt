@@ -1,0 +1,635 @@
+Patient 1
+Age: 25 | Gender: Female
+Chief Complaint: 咳嗽伴流涕
+Duration: 3 天
+Associated Symptoms: 低热 37.8℃、咽痛轻微
+Red Flags: 无呼吸困难、无咳血
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.8℃ | HR 86 | BP 112/70 | RR 18 | SpO2 98%
+Risk Level: L1
+Notes: 轻上呼吸道感染
+
+Patient 2
+Age: 68 | Gender: Male
+Chief Complaint: 持续胸痛
+Duration: 30 分钟
+Associated Symptoms: 大汗、恶心
+Red Flags: 家族早发冠心病、高危胸痛特点
+Past History: 高血压 15 年，吸烟 40 包年
+Current Meds: 硝苯地平 30 mg qd
+Allergies: 无
+Vitals: T 36.8℃ | HR 102 | BP 150/90 | RR 22 | SpO2 95%
+Risk Level: L3
+Notes: STEMI 需急诊
+
+Patient 3
+Age: 4 | Gender: Male
+Chief Complaint: 发热伴皮疹
+Duration: 1 天
+Associated Symptoms: 咳嗽、流涕
+Red Flags: 持续高热 39.5℃
+Current Meds: 布洛芬
+Allergies: 未知
+Vitals: T 39.5℃ | HR 120 | BP 90/50 | RR 24 | SpO2 99%
+Risk Level: L2
+Notes: 病毒性疹病，排除麻疹
+
+Patient 4
+Age: 32 | Gender: Female | Pregnant: 10 周
+Chief Complaint: 尿频尿痛
+Duration: 2 天
+Associated Symptoms: 轻度下腹不适
+Red Flags: 无
+Current Meds: 叶酸
+Allergies: 无
+Vitals: T 36.9℃ | HR 88 | BP 108/64 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: 妊娠期 UTI
+
+Patient 5
+Age: 55 | Gender: Male
+Chief Complaint: 夜间阵发性呼吸困难
+Duration: 1 周
+Associated Symptoms: 咳脓痰、双下肢水肿
+Red Flags: SpO2 夜间 92%
+Past History: COPD 10 年；高血压
+Current Meds: ICS/LABA、硝苯地平
+Allergies: 无
+Vitals: T 37.1℃ | HR 96 | BP 140/88 | RR 24 | SpO2 93%
+Risk Level: L2
+Notes: COPD 加重 vs 心衰
+
+Patient 6
+Age: 40 | Gender: Female
+Chief Complaint: 上腹痛
+Duration: 4 周
+Associated Symptoms: 返酸、烧心
+Red Flags: 最近体重下降 2kg
+Current Meds: 奥美拉唑
+Allergies: 无
+Vitals: T 36.7℃ | HR 78 | BP 118/70 | RR 16 | SpO2 99%
+Risk Level: L1
+Notes: GERD 建议胃镜
+
+Patient 7
+Age: 19 | Gender: Male
+Chief Complaint: 剧烈头痛伴喷射样呕吐
+Duration: 2 小时
+Associated Symptoms: 颈抵抗
+Red Flags: 剧痛 10/10
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.2℃ | HR 98 | BP 130/80 | RR 20 | SpO2 97%
+Risk Level: L3
+Notes: 考虑蛛网膜下腔出血
+
+Patient 8
+Age: 82 | Gender: Female
+Chief Complaint: 意识模糊
+Duration: 2 小时
+Associated Symptoms: 出冷汗
+Red Flags: 血糖 2.8 mmol/L
+Past History: 2 型糖尿病 20 年、CKD3、HTN
+Current Meds: 胰岛素、贝那普利
+Allergies: 无
+Vitals: T 36.5℃ | HR 54 | BP 98/60 | RR 18 | SpO2 96%
+Risk Level: L3
+Notes: 严重低血糖
+
+Patient 9
+Age: 28 | Gender: Female
+Chief Complaint: 双手红疹瘙痒
+Duration: 3 日
+Associated Symptoms: 渗液
+Red Flags: 无
+Current Meds: 抗组胺
+Allergies: 青霉素
+Vitals: T 36.8℃ | HR 72 | BP 112/72 | RR 16 | SpO2 99%
+Risk Level: L1
+Notes: 乳胶过敏
+
+Patient 10
+Age: 14 | Gender: Male
+Chief Complaint: 运动后胸闷
+Duration: 2 月
+Associated Symptoms: 心悸
+Red Flags: 无晕厥
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 80 | BP 110/68 | RR 18 | SpO2 98%
+Risk Level: L2
+Notes: HOCM 待确诊
+
+Patient 11
+Age: 60 | Gender: Male
+Chief Complaint: 左小腿疼痛肿胀
+Duration: 1 天
+Associated Symptoms: 轻度呼吸急促
+Red Flags: 长途飞行后形成肿胀
+Past History: 高血压、肥胖 BMI 32
+Current Meds: 缬沙坦 80 mg qd
+Allergies: 无
+Vitals: T 36.9℃ | HR 92 | BP 148/92 | RR 20 | SpO2 96%
+Risk Level: L2
+Notes: DVT 风险高，需彩超+抗凝
+
+Patient 12
+Age: 46 | Gender: Female
+Chief Complaint: 上腹绞痛伴黄疸
+Duration: 12 小时
+Associated Symptoms: 发热 38.6℃、寒战
+Red Flags: 三联症提示化脓性胆管炎
+Past History: 胆囊结石 3 年
+Current Meds: 无
+Allergies: 头孢类
+Vitals: T 38.6℃ | HR 110 | BP 90/60 | RR 24 | SpO2 95%
+Risk Level: L3
+Notes: 急性胆管炎 + 败血症风险，需要 ERCP
+
+Patient 13
+Age: 70 | Gender: Male
+Chief Complaint: 黑便
+Duration: 1 天
+Associated Symptoms: 头晕、乏力
+Red Flags: SBP 88/55, 心率 112
+Past History: NSAIDs 长期服用、冠心病支架
+Current Meds: 阿司匹林、他汀
+Allergies: 无
+Vitals: T 36.8℃ | HR 112 | BP 88/55 | RR 22 | SpO2 94%
+Risk Level: L3
+Notes: 上消化道出血 + 抗血小板，紧急胃镜
+
+Patient 14
+Age: 8 | Gender: Female
+Chief Complaint: 夜间咳嗽喘息
+Duration: 2 周
+Associated Symptoms: 呼气哮鸣音
+Red Flags: 无 SpO2 正常
+Past History: 早产史、家族哮喘
+Current Meds: 雾化布地奈德 prn
+Allergies: 花粉
+Vitals: T 36.7℃ | HR 98 | BP 98/60 | RR 24 | SpO2 97%
+Risk Level: L2
+Notes: 儿童哮喘中度持续
+
+Patient 15
+Age: 35 | Gender: Male
+Chief Complaint: 腹股沟疼痛肿块
+Duration: 3 周
+Associated Symptoms: 咳嗽时明显
+Red Flags: 无嵌顿表现
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 78 | BP 120/76 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: 腹股沟疝可择期修补
+
+Patient 16
+Age: 50 | Gender: Female
+Chief Complaint: 右膝关节红肿
+Duration: 1 天
+Associated Symptoms: 夜间痛醒
+Red Flags: 发热 38.5℃
+Past History: 痛风、高尿酸血症
+Current Meds: 别嘌醇 100 mg qd
+Allergies: 青霉素
+Vitals: T 38.5℃ | HR 102 | BP 132/84 | RR 20 | SpO2 98%
+Risk Level: L2
+Notes: 痛风性关节炎急性发作需要排除感染
+
+Patient 17
+Age: 62 | Gender: Male
+Chief Complaint: 进行性呼吸困难
+Duration: 6 月
+Associated Symptoms: 劳力性低氧
+Red Flags: 指端杵状、SpO2 88% 静息
+Past History: 粉尘暴露 30 年，肺功能差
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.8℃ | HR 96 | BP 126/80 | RR 26 | SpO2 88%
+Risk Level: L3
+Notes: 间质性肺病晚期
+
+Patient 18
+Age: 21 | Gender: Female
+Chief Complaint: 情绪低落
+Duration: 6 周
+Associated Symptoms: 失眠、体重下降 3kg
+Red Flags: 有自伤想法但未实施
+Past History: 家族抑郁
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.7℃ | HR 76 | BP 110/70 | RR 16 | SpO2 99%
+Risk Level: L2
+Notes: 中度抑郁障碍
+
+Patient 19
+Age: 48 | Gender: Male
+Chief Complaint: 体位性头晕
+Duration: 1 周
+Associated Symptoms: 视物模糊
+Red Flags: SBP 90 mmHg 站立
+Past History: 高血压、利尿剂近期调整
+Current Meds: 呋塞米 20 mg qd
+Allergies: 无
+Vitals: T 36.5℃ | HR 88 | BP 110/70 卧位 | BP 90/60 站立 | RR 18 | SpO2 98%
+Risk Level: L2
+Notes: 药物相关体位性低血压
+
+Patient 20
+Age: 59 | Gender: Female
+Chief Complaint: 右上腹绞痛
+Duration: 6 小时
+Associated Symptoms: 放射右肩
+Red Flags: 无黄疸
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.0℃ | HR 82 | BP 128/78 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: 胆石症胆绞痛
+
+Patient 21
+Age: 2 | Gender: Male
+Chief Complaint: 持续哭闹抓耳
+Duration: 1 天
+Associated Symptoms: 发热 38.8℃
+Red Flags: 高热、拒食
+Past History: 早产 34 周
+Current Meds: 退烧
+Allergies: 无
+Vitals: T 38.8℃ | HR 140 | BP 85/50 | RR 28 | SpO2 97%
+Risk Level: L3
+Notes: 急性中耳炎伴高热
+
+Patient 22
+Age: 73 | Gender: Female
+Chief Complaint: 急性认知下降
+Duration: 3 天
+Associated Symptoms: 偏瘫
+Red Flags: FAST 阳性
+Past History: 高血压、房颤
+Current Meds: 华法林
+Allergies: 无
+Vitals: T 36.8℃ | HR 92 (不齐) | BP 160/90 | RR 20 | SpO2 96%
+Risk Level: L2
+Notes: 血管性痴呆或卒中
+
+Patient 23
+Age: 37 | Gender: Male
+Chief Complaint: 多饮多尿
+Duration: 2 月
+Associated Symptoms: 体重减轻 4kg
+Red Flags: FPG 14 mmol/L
+Past History: 无
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 80 | BP 120/78 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: LADA 可能
+
+Patient 24
+Age: 45 | Gender: Female
+Chief Complaint: 颈前肿块
+Duration: 1 月
+Associated Symptoms: 轻度吞咽困难
+Red Flags: 快速增大
+Past History: 碘缺乏
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.7℃ | HR 82 | BP 116/74 | RR 16 | SpO2 99%
+Risk Level: L2
+Notes: 甲状腺结节——FNAC 建议
+
+Patient 25
+Age: 29 | Gender: Male
+Chief Complaint: 慢性下背痛
+Duration: 3 月
+Associated Symptoms: 清晨僵硬 40 分钟
+Red Flags: 无
+Past History: HLA-B27(+)
+Current Meds: NSAIDs 间断
+Allergies: 无
+Vitals: T 36.6℃ | HR 72 | BP 118/70 | RR 16 | SpO2 99%
+Risk Level: L1
+Notes: 强直性脊柱炎疑似
+
+Patient 26
+Age: 34 | Gender: Female
+Chief Complaint: 双下肢麻木无力
+Duration: 1 周
+Associated Symptoms: 小便困难
+Red Flags: 产后 3 周，D-dimer ↑
+Past History: 剖宫产 3 周前
+Current Meds: 恢复中，无
+Allergies: 无
+Vitals: T 37.1℃ | HR 98 | BP 118/76 | RR 20 | SpO2 97%
+Risk Level: L3
+Notes: 静脉血栓栓塞 + 急性脊髓压迫可能
+
+Patient 27
+Age: 52 | Gender: Male
+Chief Complaint: 黄疸
+Duration: 1 周
+Associated Symptoms: 体重下降 4kg
+Red Flags: Bil 总胆红素 200 μmol/L
+Past History: 长期饮酒
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.2℃ | HR 90 | BP 130/80 | RR 18 | SpO2 96%
+Risk Level: L2
+Notes: 肝癌需排查
+
+Patient 28
+Age: 67 | Gender: Female
+Chief Complaint: 行走时胸压感
+Duration: 2 月
+Associated Symptoms: 无休息痛
+Red Flags: HbA1c 9%
+Past History: 糖尿病、CKD2
+Current Meds: 二甲双胍、贝那普利
+Allergies: 无
+Vitals: T 36.8℃ | HR 88 | BP 140/88 | RR 18 | SpO2 97%
+Risk Level: L2
+Notes: 无痛性心绞痛
+
+Patient 29
+Age: 18 | Gender: Male
+Chief Complaint: 夜间盗汗低热
+Duration: 1 月
+Associated Symptoms: 体重下降 5kg
+Red Flags: 无
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.8℃ | HR 88 | BP 118/72 | RR 18 | SpO2 98%
+Risk Level: L1
+Notes: 结核 vs 淋巴瘤
+
+Patient 30
+Age: 56 | Gender: Female
+Chief Complaint: 单眼失明
+Duration: 1 小时
+Associated Symptoms: 眼痛
+Red Flags: 视力光感 (-)
+Past History: 高血压、偏头痛
+Current Meds: 苯噻嗪
+Allergies: 无
+Vitals: T 36.7℃ | HR 84 | BP 138/86 | RR 18 | SpO2 98%
+Risk Level: L2
+Notes: CRAO 需眼科急诊
+
+Patient 31
+Age: 44 | Gender: Male
+Chief Complaint: 震颤
+Duration: 6 月
+Associated Symptoms: 双手细颤
+Red Flags: 无
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 78 | BP 120/76 | RR 16 | SpO2 99%
+Risk Level: L1
+Notes: 本态性震颤
+
+Patient 32
+Age: 27 | Gender: Female
+Chief Complaint: 不规则阴道出血
+Duration: 2 周
+Associated Symptoms: 贫血症状
+Red Flags: Hb 8 g/dl
+Past History: 子宫肌瘤
+Current Meds: 雌孕激素疗法
+Allergies: 无
+Vitals: T 36.7℃ | HR 96 | BP 112/68 | RR 18 | SpO2 99%
+Risk Level: L2
+Notes: 子宫肌瘤出血
+
+Patient 33
+Age: 80 | Gender: Male
+Chief Complaint: 夜咳哮鸣
+Duration: 1 周
+Associated Symptoms: 端坐呼吸
+Red Flags: BNP 1800 pg/mL
+Past History: CHF NYHA III
+Current Meds: 利尿剂、ACEI、BB
+Allergies: 无
+Vitals: T 36.5℃ | HR 98 | BP 110/70 | RR 24 | SpO2 92%
+Risk Level: L3
+Notes: 心源性哮喘
+
+Patient 34
+Age: 53 | Gender: Female
+Chief Complaint: 复视伴眼睑下垂
+Duration: 3 月
+Associated Symptoms: 傍晚加重
+Red Flags: 呼吸弱化可能
+Past History: 甲状腺疾病
+Current Meds: 甲硫咪唑
+Allergies: 无
+Vitals: T 36.8℃ | HR 80 | BP 118/74 | RR 18 | SpO2 97%
+Risk Level: L2
+Notes: 重症肌无力
+
+Patient 35
+Age: 30 | Gender: Male
+Chief Complaint: 腹泻+关节痛
+Duration: 2 月
+Associated Symptoms: 口腔溃疡
+Red Flags: 体重下降
+Current Meds: NSAIDs
+Allergies: 无
+Vitals: T 37.1℃ | HR 84 | BP 122/78 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: 克罗恩病
+
+Patient 36
+Age: 61 | Gender: Female
+Chief Complaint: 腰背疼痛身高下降
+Duration: 6 月
+Associated Symptoms: 驼背
+Red Flags: 无
+Past History: 绝经 10 年
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 78 | BP 130/82 | RR 18 | SpO2 98%
+Risk Level: L1
+Notes: 骨质疏松椎体压缩
+
+Patient 37
+Age: 23 | Gender: Male
+Chief Complaint: 喉头水肿
+Duration: 10 分钟
+Associated Symptoms: 声音嘶哑、呼吸困难
+Red Flags: SpO2 88%
+Past History: 花生过敏
+Current Meds: 无
+Allergies: 花生
+Vitals: T 36.7℃ | HR 120 | BP 100/60 | RR 30 | SpO2 88%
+Risk Level: L3
+Notes: 过敏性休克需肾上腺素
+
+Patient 38
+Age: 47 | Gender: Female
+Chief Complaint: 牙龈出血
+Duration: 1 月
+Associated Symptoms: 颌面疼痛
+Red Flags: HbA1c 11%
+Past History: 糖尿病不良控制
+Current Meds: 二甲双胍
+Allergies: 无
+Vitals: T 36.8℃ | HR 86 | BP 118/76 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: 牙周炎并发
+
+Patient 39
+Age: 58 | Gender: Male
+Chief Complaint: 记忆力下降
+Duration: 3 月
+Associated Symptoms: 焦虑
+Red Flags: 长期苯二氮卓使用
+Current Meds: 地西泮
+Allergies: 无
+Vitals: T 36.7℃ | HR 76 | BP 130/78 | RR 16 | SpO2 98%
+Risk Level: L1
+Notes: 药物诱导认知障碍
+
+Patient 40
+Age: 6 | Gender: Female
+Chief Complaint: 咳嗽+结膜出血
+Duration: 5 天
+Associated Symptoms: 鸡啼样咳嗽
+Red Flags: 发作性痉咳
+Past History: 未完成百日咳疫苗
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.3℃ | HR 110 | BP 90/60 | RR 26 | SpO2 95%
+Risk Level: L2
+Notes: 百日咳
+
+Patient 41
+Age: 49 | Gender: Male
+Chief Complaint: 嗳气腹胀
+Duration: 2 月
+Associated Symptoms: 体重下降 3kg
+Red Flags: PPI 无效
+Past History: 胃溃疡
+Current Meds: 奥美拉唑
+Allergies: 无
+Vitals: T 36.8℃ | HR 80 | BP 124/80 | RR 18 | SpO2 99%
+Risk Level: L2
+Notes: 需排除胃癌
+
+Patient 42
+Age: 72 | Gender: Female
+Chief Complaint: 无痛性血尿
+Duration: 3 日
+Associated Symptoms: 无发热
+Red Flags: 大量血尿、凝块
+Past History: 吸烟 30 年
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.7℃ | HR 84 | BP 136/82 | RR 18 | SpO2 98%
+Risk Level: L3
+Notes: 膀胱癌警示
+
+Patient 43
+Age: 33 | Gender: Female
+Chief Complaint: 乏力晕厥
+Duration: 1 周
+Associated Symptoms: 舌炎
+Red Flags: Hb 7 g/dl
+Past History: 素食 10 年
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 102 | BP 100/60 | RR 18 | SpO2 97%
+Risk Level: L2
+Notes: 巨幼细胞贫血
+
+Patient 44
+Age: 65 | Gender: Male
+Chief Complaint: 四肢麻木烧灼感
+Duration: 1 年
+Associated Symptoms: 足部破溃
+Red Flags: HbA1c 10%
+Past History: 糖尿病 20 年
+Current Meds: 胰岛素
+Allergies: 无
+Vitals: T 36.7℃ | HR 84 | BP 140/90 | RR 18 | SpO2 98%
+Risk Level: L1
+Notes: 周围神经病变
+
+Patient 45
+Age: 41 | Gender: Female
+Chief Complaint: 疲倦体重增加
+Duration: 4 月
+Associated Symptoms: 畏寒
+Red Flags: TSH 30 μIU/mL
+Past History: 桥本甲状腺炎家族史
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.3℃ | HR 60 | BP 110/70 | RR 16 | SpO2 99%
+Risk Level: L1
+Notes: 甲减
+
+Patient 46
+Age: 54 | Gender: Male
+Chief Complaint: 视野缺损
+Duration: 2 周
+Associated Symptoms: 头痛
+Red Flags: 垂体瘤史
+Past History: 垂体腺瘤术后 2 年
+Current Meds: 可的松替代
+Allergies: 无
+Vitals: T 36.7℃ | HR 78 | BP 126/80 | RR 18 | SpO2 99%
+Risk Level: L2
+Notes: 垂体瘤复发可疑
+
+Patient 47
+Age: 16 | Gender: Female
+Chief Complaint: 髋部疼痛跛行
+Duration: 2 月
+Associated Symptoms: 活动受限
+Red Flags: X 线示股骨头滑脱
+Current Meds: 无
+Allergies: 无
+Vitals: T 36.6℃ | HR 80 | BP 112/72 | RR 18 | SpO2 99%
+Risk Level: L1
+Notes: SCFE 青春期
+
+Patient 48
+Age: 38 | Gender: Male
+Chief Complaint: 紫癜低热
+Duration: 2 周
+Associated Symptoms: 牙龈出血
+Red Flags: PLT 50×10^9/L
+Past History: 乙肝携带
+Current Meds: 无
+Allergies: 无
+Vitals: T 37.4℃ | HR 84 | BP 118/76 | RR 18 | SpO2 98%
+Risk Level: L2
+Notes: ITP
+
+Patient 49
+Age: 57 | Gender: Female
+Chief Complaint: 暴躁多汗心悸
+Duration: 6 月
+Associated Symptoms: 月经停止
+Red Flags: 甲状腺促抗体阳性
+Past History: 高血压
+Current Meds: 氨氯地平
+Allergies: 无
+Vitals: T 37.2℃ | HR 98 | BP 138/84 | RR 18 | SpO2 98%
+Risk Level: L1
+Notes: 更年期 vs 甲亢
+
+Patient 50
+Age: 45 | Gender: Male
+Chief Complaint: 异常疲劳黄疸
+Duration: 4 天
+Associated Symptoms: 高热 39℃
+Red Flags: 旅行史 + 高热 + 贫血
+Past History: 无
+Current Meds: 无
+Allergies: 无
+Vitals: T 39.0℃ | HR 110 | BP 100/60 | RR 22 | SpO2 95%
+Risk Level: L3
+Notes: 疟疾需快速诊断 

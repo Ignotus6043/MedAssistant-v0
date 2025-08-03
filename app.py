@@ -94,34 +94,83 @@ MED_DB_FILE = 'medical_db.json'
 
 # ----------------- Medical DB helpers -----------------
 
+# === NEW: auto-derive chief complaints ===
+
+def _derive_chief_complaints(dis: dict, max_items: int = 4):
+    """Select up to `max_items` 主诉采集 symptoms names ordered by priority."""
+    if not dis.get('symptoms'):
+        return []
+    main = [s for s in dis['symptoms'] if s.get('type') == '主诉采集']
+    main_sorted = sorted(main, key=lambda s: s.get('priority', 99))
+    return [s['name'] for s in main_sorted[:max_items]]
+
+# Update load_med_db so every disease has chief_complaints
+
 def load_med_db():
+    """Load DB and ensure chief_complaints field exists."""
     if os.path.exists(MED_DB_FILE):
         with open(MED_DB_FILE, 'r', encoding='utf-8') as f:
             try:
-                return json.load(f)
+                data = json.load(f)
             except json.JSONDecodeError:
-                return {"diseases": []}
-    return {"diseases": []}
+                data = []
+    else:
+        data = []
+
+    # Wrap list into dict
+    if isinstance(data, list):
+        data = {"diseases": data}
+    # 不再自动推断 chief_complaints，要求在 medical_db.json 中显式给出
+    return data
+
+# ---------- persist helper ----------
 
 def save_med_db(db):
+    """Save the in-memory DB back to MED_DB_FILE."""
     with open(MED_DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(db, f, ensure_ascii=False, indent=2)
 
-# --------------- Dynamic prompt builder ---------------
+# === NEW: overview builder ===
 
-def build_med_db_text(db):
-    """Convert JSON DB into prompt-friendly markdown."""
+def build_med_db_overview_text(db):
+    """Return markdown: system -> id name | 主诉 A,B."""
+    diseases_list = db.get('diseases', []) if isinstance(db, dict) else db
     lines = []
     systems = {}
-    for d in db.get('diseases', []):
+    for d in diseases_list:
         systems.setdefault(d['system'], []).append(d)
-    # Sort systems alphabetically
     for sys_code in sorted(systems.keys()):
         sys_list = systems[sys_code]
-        # assume all items share system_name
+        lines.append(f"## {sys_code}. {sys_list[0]['system_name']}")
+        for item in sorted(sys_list, key=lambda x: x['id']):
+            cc_list = item.get('chief_complaints', [])
+            if cc_list:
+                cc = "、".join(cc_list[:4])
+                lines.append(f"{item['id']}. {item['name']} | 主诉: {cc}")
+            else:
+                lines.append(f"{item['id']}. {item['name']}")
+    return "\n".join(lines)
+
+# Keep old detailed builder but rename
+
+def build_med_db_full_text(db):
+    """Full detailed text (keeps existing build_med_db_text logic)."""
+    if isinstance(db, dict):
+        diseases_list = db.get('diseases', [])
+    else:
+        diseases_list = db
+    lines = []
+    systems = {}
+    for d in diseases_list:
+        systems.setdefault(d['system'], []).append(d)
+    for sys_code in sorted(systems.keys()):
+        sys_list = systems[sys_code]
         lines.append(f"## {sys_code}. {sys_list[0]['system_name']}")
         for item in sorted(sys_list, key=lambda x: x['id']):
             lines.append(f"\n### {item['id']}. {item['name']}")
+            cc_full = item.get('chief_complaints', [])
+            if cc_full:
+                lines.append(f"* 主诉关键词: {'、'.join(cc_full)}")
             if item.get('judgement_factors'):
                 lines.append("\n#### 判断因子")
                 for lvl, factors in item['judgement_factors'].items():
@@ -133,27 +182,28 @@ def build_med_db_text(db):
                 lines.append("\n#### 决策路径")
                 for idx, path in enumerate(item['decision_paths'], 1):
                     lines.append(f"{idx}. {path}")
+            if item.get('symptoms'):
+                lines.append("\n#### 详细症状")
+                for s in item['symptoms']:
+                    opts = "、".join(s.get('options', []))
+                    lines.append(f"- {s['name']}（{s['type']}，优先级{s['priority']}）可选: {opts}")
     return "\n".join(lines)
 
-# Override get_initial_prompt
+# === Replace old build_med_db_text reference ===
+
+# Override get_initial_prompt to inject only overview
 
 def get_initial_prompt():
     with open('prompt_react_cn.txt', 'r', encoding='utf-8') as f:
         template = f.read()
-
-    db_markdown = build_med_db_text(load_med_db())
-
-    # 首选占位符替换
+    db_data = load_med_db()
+    overview_text = build_med_db_overview_text(db_data)
     if '[MEDICAL_DATABASE]' in template:
-        return template.replace('[MEDICAL_DATABASE]', db_markdown)
-
-    # 其次在 ## 医疗知识库 标记后插入
+        return template.replace('[MEDICAL_DATABASE]', overview_text)
     marker = '## 医疗知识库'
     if marker in template:
         before, after = template.split(marker, 1)
-        return before + marker + '\n\n' + db_markdown + '\n' + after
-
-    # 默认返回原模板
+        return before + marker + '\n\n' + overview_text + '\n' + after
     return template
 
 # Load users from file
@@ -566,10 +616,37 @@ def admin_medical_db():
     if request.method == 'GET':
         return jsonify(load_med_db())
     data = request.get_json()
-    if not data or 'diseases' not in data:
+    if not data:
         return jsonify({'message': 'Invalid payload'}), 400
-    save_med_db(data)
+
+    # Accept both list and dict payloads from the admin panel
+    if isinstance(data, list):
+        save_med_db({"diseases": data})
+    elif isinstance(data, dict) and 'diseases' in data:
+        save_med_db(data)
+    else:
+        return jsonify({'message': 'Invalid payload – expected a list or an object with "diseases" key'}), 400
     return jsonify({'success': True})
+
+# ----------------- Tool endpoint: disease_detail -----------------
+
+@app.route('/api/tool/disease_detail', methods=['POST'])
+@token_required
+def tool_disease_detail(current_user):
+    """Return full markdown details for a specific disease id (e.g., "A-1")."""
+    data = request.get_json() or {}
+    disease_id = str(data.get('id') or data.get('disease_id', '')).strip()
+    if not disease_id:
+        return jsonify({'error': 'Missing id'}), 400
+
+    db = load_med_db()
+    for dis in db.get('diseases', []):
+        if f"{dis['system']}-{dis['id']}" == disease_id or str(dis['id']) == disease_id:
+            return jsonify({
+                'markdown': build_med_db_full_text({'diseases': [dis]}),
+                'raw': dis
+            })
+    return jsonify({'error': 'Disease id not found'}), 404
 
 # ----------------- User session helpers -----------------
 
