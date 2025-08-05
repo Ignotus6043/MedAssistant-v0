@@ -143,9 +143,9 @@ def build_med_db_overview_text(db):
         sys_list = systems[sys_code]
         lines.append(f"## {sys_code}. {sys_list[0]['system_name']}")
         for item in sorted(sys_list, key=lambda x: x['id']):
-            cc_list = item.get('chief_complaints', [])
+            cc_list=_chief_list(item)
             if cc_list:
-                cc = "、".join(cc_list[:4])
+                cc="、".join(cc_list[:4])
                 lines.append(f"{item['id']}. {item['name']} | 主诉: {cc}")
             else:
                 lines.append(f"{item['id']}. {item['name']}")
@@ -168,9 +168,9 @@ def build_med_db_full_text(db):
         lines.append(f"## {sys_code}. {sys_list[0]['system_name']}")
         for item in sorted(sys_list, key=lambda x: x['id']):
             lines.append(f"\n### {item['id']}. {item['name']}")
-            cc_full = item.get('chief_complaints', [])
-            if cc_full:
-                lines.append(f"* 主诉关键词: {'、'.join(cc_full)}")
+            ccl=_chief_list(item)
+            if ccl:
+                lines.append(f"* 主诉关键词: {'、'.join(ccl)}")
             if item.get('judgement_factors'):
                 lines.append("\n#### 判断因子")
                 for lvl, factors in item['judgement_factors'].items():
@@ -322,6 +322,8 @@ def register():
     }
 
     save_users(users)
+    # Mark user online immediately after registration
+    online_users[username] = datetime.utcnow()
 
     token = generate_token(username)
 
@@ -349,6 +351,8 @@ def login():
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
     token = generate_token(username)
+    # Mark user online on login
+    online_users[username] = datetime.utcnow()
 
     return jsonify({
         "success": True,
@@ -402,6 +406,8 @@ def chat(current_user):
 
     if not message:
         return jsonify({'error': 'No message provided'}), 400
+    if len(message) > 500:
+        return jsonify({'error': 'Message exceeds 500 character limit'}), 400
 
     # ---------- 构建对话上下文（记忆） ----------
     if user_id not in conversation_context:
@@ -567,11 +573,13 @@ def admin_users():
     cleanup_online_users()
     user_list = []
     for username, info in users.items():
-        status = 'active' if username in online_users else 'offline'
+        last_seen = online_users.get(username)
+        status = 'active' if last_seen else 'offline'
         user_list.append({
             'username': username,
             'name': info.get('name', username),
-            'status': status
+            'status': status,
+            'last_seen': last_seen.isoformat() + 'Z' if last_seen else None
         })
     return jsonify(user_list)
 
@@ -650,7 +658,7 @@ def tool_disease_detail(current_user):
 
 # ----------------- User session helpers -----------------
 
-ONLINE_THRESHOLD_SEC = 300  # 5 minutes
+ONLINE_THRESHOLD_SEC = 1800  # 30 minutes
 
 def cleanup_online_users():
     """Remove users who have been inactive for longer than threshold."""
@@ -667,6 +675,14 @@ def logout(current_user):
     # 持久化就诊历史
     save_patient_histories(patient_histories)
     return jsonify({'success': True})
+
+# ------------ helper for chief list -------------
+
+def _chief_list(item):
+    cc=item.get('chief_complaints', [])
+    if isinstance(cc, str):
+        return [c.strip() for c in cc.split('、') if c.strip()]
+    return cc if isinstance(cc, list) else []
 
 if __name__ == '__main__':
     print("Starting Flask server on port 5050...")

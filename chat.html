@@ -20,7 +20,10 @@
                 <div class="message system">欢迎来到医疗助手！请问有什么可以帮助您的？</div>
             </div>
             <div class="chat-input">
-                <textarea id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)"></textarea>
+                <textarea id="messageInput" placeholder="Type your message (max 500 chars)..." oninput="updateCounter()" onkeypress="handleKeyPress(event)"></textarea>
+                <div style="text-align:right;font-size:12px;color:#666;margin-top:2px;">
+                    <span id="charCounter">0/500</span>
+                </div>
                 <button id="sendButton" onclick="sendMessage()">Send</button>
             </div>
         </div>
@@ -52,6 +55,25 @@
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({})
+            });
+        }
+
+        // inside <script> top add helper modal
+        function showYNDialog(message) {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.style.position='fixed';overlay.style.top=0;overlay.style.left=0;overlay.style.right=0;overlay.style.bottom=0;overlay.style.background='rgba(0,0,0,0.4)';overlay.style.display='flex';overlay.style.alignItems='center';overlay.style.justifyContent='center';overlay.style.zIndex=9999;
+
+                const box = document.createElement('div');
+                box.style.background='#fff';box.style.padding='20px';box.style.borderRadius='8px';box.style.width='260px';box.style.textAlign='center';
+                const msgEl=document.createElement('p');msgEl.textContent=message;msgEl.style.whiteSpace='pre-wrap';
+                const yesBtn=document.createElement('button');yesBtn.textContent='确定';yesBtn.style.margin='10px';
+                const noBtn=document.createElement('button');noBtn.textContent='取消';noBtn.style.margin='10px';
+                yesBtn.onclick=()=>{document.body.removeChild(overlay);resolve(true);};
+                noBtn.onclick=()=>{document.body.removeChild(overlay);resolve(false);};
+                box.appendChild(msgEl);box.appendChild(yesBtn);box.appendChild(noBtn);
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
             });
         }
 
@@ -127,66 +149,69 @@
             const sendButton = document.getElementById('sendButton');
             const message = messageInput.value.trim();
             
-            if (message) {
-                messageInput.disabled = true;
-                sendButton.disabled = true;
-                sendButton.textContent = 'Sending...';
+            if (!message) return;
+            if (message.length > 500) {
+                alert('输入已超过 500 字符限制，请精简后再发送。');
+                return;
+            }
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
 
-                addMessage(message, 'user');
-                messageInput.value = '';
+            addMessage(message, 'user');
+            messageInput.value = '';
 
-                // Save user message to chatHistory in localStorage
+            // Save user message to chatHistory in localStorage
+            saveChatMessage({
+                user: userName || 'Me',
+                role: 'user',
+                text: message,
+                timestamp: new Date().toISOString()
+            });
+
+            // Send to backend and get AI response
+            fetch(API_BASE + '/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ message })
+            })
+            .then(res => {
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    window.location.href = 'login.html';
+                    return Promise.reject('Unauthorized');
+                }
+                return res.json();
+            })
+            .then(data => {
+                addMessage(data.response, 'assistant');
                 saveChatMessage({
-                    user: userName || 'Me',
-                    role: 'user',
-                    text: message,
+                    user: 'Medical Assistant',
+                    role: 'assistant',
+                    text: data.response,
                     timestamp: new Date().toISOString()
                 });
-
-                // Send to backend and get AI response
-                fetch(API_BASE + '/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ message })
-                })
-                .then(res => {
-                    if (res.status === 401 || res.status === 403) {
-                        localStorage.removeItem('token');
-                        window.location.href = 'login.html';
-                        return Promise.reject('Unauthorized');
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    addMessage(data.response, 'assistant');
-                    saveChatMessage({
-                        user: 'Medical Assistant',
-                        role: 'assistant',
-                        text: data.response,
-                        timestamp: new Date().toISOString()
-                    });
-                })
-                .catch((err) => {
-                    if (err === 'Unauthorized') return;
-                    const errorMsg = "Sorry, I'm having trouble connecting to the AI right now.";
-                    addMessage(errorMsg, 'assistant');
-                    saveChatMessage({
-                        user: 'Medical Assistant',
-                        role: 'assistant',
-                        text: errorMsg,
-                        timestamp: new Date().toISOString()
-                    });
-                })
-                .finally(() => {
-                    messageInput.disabled = false;
-                    sendButton.disabled = false;
-                    sendButton.textContent = 'Send';
-                    messageInput.focus();
+            })
+            .catch((err) => {
+                if (err === 'Unauthorized') return;
+                const errorMsg = "Sorry, I'm having trouble connecting to the AI right now.";
+                addMessage(errorMsg, 'assistant');
+                saveChatMessage({
+                    user: 'Medical Assistant',
+                    role: 'assistant',
+                    text: errorMsg,
+                    timestamp: new Date().toISOString()
                 });
-            }
+            })
+            .finally(() => {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                messageInput.focus();
+            });
         }
 
         function handleKeyPress(event) {
@@ -194,6 +219,13 @@
                 event.preventDefault();
                 sendMessage();
             }
+        }
+
+        function updateCounter() {
+            const messageInput = document.getElementById('messageInput');
+            const charCounter = document.getElementById('charCounter');
+            const currentLength = messageInput.value.length;
+            charCounter.textContent = `${currentLength}/500`;
         }
 
         function addAssistantMessage(text) {
@@ -306,6 +338,29 @@
             // Third: Focus input after history check completes
             document.getElementById('messageInput').focus();
             // ================= END FIX =================
+
+            // ============ Inactivity auto-logout (30 min) ============
+            const INACT_MS = 30 * 60 * 1000; // 30 分钟
+            let lastActivity = Date.now();
+            const refreshActivity = () => { lastActivity = Date.now(); };
+            ['click','keydown','mousemove','scroll'].forEach(ev => window.addEventListener(ev, refreshActivity));
+
+            async function autoLogout() {
+                try {
+                    await fetch(API_BASE + '/api/logout', { method:'POST', headers:{ 'Authorization': `Bearer ${token}` }});
+                } catch(e) { console.warn('Logout request failed', e); }
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                alert('已超过 30 分钟未操作，已自动退出。');
+                window.location.href = 'login.html';
+            }
+
+            setInterval(() => {
+                if (Date.now() - lastActivity > INACT_MS) {
+                    autoLogout();
+                }
+            }, 60000); // check 每分钟
+            // ============ End inactivity ============
         });
     </script>
 </body>
