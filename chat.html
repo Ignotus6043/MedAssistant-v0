@@ -7,24 +7,49 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container chat-container-root">
-        <div class="chat-header">
+    <div class="container chat-container-root" style="display:flex;flex-direction:column;min-height:100vh;max-height:100vh;">
+        <div class="chat-header" style="flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #eee;">
             <h2 id="chatTitle">Medical Assistant Chat</h2>
-            <div>
-                <!-- Clear Chat button removed -->
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span id="userNameDisplay" style="color:#fff;opacity:0.9;"></span>
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
-        <div class="chat-container">
-            <div class="chat-messages" id="chatMessages">
-                <div class="message system">欢迎来到医疗助手！请问有什么可以帮助您的？</div>
+        <div class="chat-container" style="flex:1 1 auto;display:flex;flex-direction:column;overflow:hidden;">
+            <div class="chat-messages" id="chatMessages" style="flex:1 1 auto;overflow:auto;padding:12px;gap:8px;display:flex;flex-direction:column;">
+                <div class="message system" style="width:70%;align-self:center;text-align:center;padding:12px 16px;border-radius:18px;background:#6f42c1;color:#fff;">欢迎来到医疗助手！请问有什么可以帮助您的？</div>
             </div>
-            <div class="chat-input">
-                <textarea id="messageInput" placeholder="Type your message (max 500 chars)..." oninput="updateCounter()" onkeypress="handleKeyPress(event)"></textarea>
-                <div style="text-align:right;font-size:12px;color:#666;margin-top:2px;">
-                    <span id="charCounter">0/500</span>
+            <div class="chat-input" style="flex:0 0 auto;display:flex;gap:8px;align-items:stretch;padding:8px;border-top:1px solid #eee;">
+                <textarea id="messageInput" placeholder="Type your message (max 500 chars)..." oninput="updateCounter()" onkeypress="handleKeyPress(event)" style="flex:1;min-height:56px;max-height:40vh;resize:vertical;padding:8px;border:1px solid #ccc;border-radius:6px;"></textarea>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:space-between;align-self:stretch;margin:0;padding:0;">
+                    <button id="sendButton" onclick="sendMessage()" style="padding:8px 14px;background:#2d7ef7;color:#fff;border:none;border-radius:6px;margin:0;">Send</button>
+                    <span id="charCounter" style="font-size:12px;color:#666;line-height:1;margin:0;">0/500</span>
                 </div>
-                <button id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+            <div style="flex:0 0 auto;margin-top:6px;font-size:12px;color:#666;line-height:1.5;border-top:1px solid #eee;padding:6px 8px;">
+                免责声明：本系统为健康信息辅助工具，不能替代专业医疗建议、诊断或治疗。若出现紧急或严重症状，请立即就医。
+            </div>
+        </div>
+        <!-- Demographics modal overlay -->
+        <div id="demoOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;z-index:9999;">
+            <div style="background:#fff;padding:18px 16px;border-radius:10px;width:320px;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+                <div style="font-weight:600;margin-bottom:10px;">请先选择年龄与性别</div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                    <label style="width:60px;color:#555;">年龄</label>
+                    <input id="ageInput" type="number" min="0" max="120" placeholder="例如 29" style="flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;" />
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+                    <label style="width:60px;color:#555;">性别</label>
+                    <select id="sexSelect" style="flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;">
+                        <option value="">请选择</option>
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button id="demoOkBtn" style="padding:6px 10px;background:#2d7ef7;color:#fff;border:none;border-radius:6px;">确定</button>
+                </div>
+                <div id="demoError" style="margin-top:8px;color:#c00;font-size:12px;display:none;">请填写合法年龄(0-120)并选择性别</div>
             </div>
         </div>
     </div>
@@ -33,13 +58,18 @@
         // Redirect to login page if no auth token
         const token = localStorage.getItem('token');
         const userName = localStorage.getItem('username') || localStorage.getItem('userName');
+        // Tunable constants (modifiable)
+        const CHAR_LIMIT = 500;              // Max chat input length
+        const INACT_MS = 30 * 60 * 1000;     // 30 minutes inactivity auto-logout
         if (!token) {
             window.location.href = 'login.html';
         }
 
-        // Update chat title with user name if available
+        // Update title and place username at header right
         if (userName) {
-            document.getElementById('chatTitle').textContent = `Medical Assistant Chat - ${userName}`;
+            document.getElementById('chatTitle').textContent = 'Medical Assistant Chat';
+            const und = document.getElementById('userNameDisplay');
+            if (und) und.textContent = userName;
         }
 
         // Dynamic API base URL for local and production
@@ -150,7 +180,7 @@
             const message = messageInput.value.trim();
             
             if (!message) return;
-            if (message.length > 500) {
+            if (message.length > CHAR_LIMIT) {
                 alert('输入已超过 500 字符限制，请精简后再发送。');
                 return;
             }
@@ -187,7 +217,8 @@
                 return res.json();
             })
             .then(data => {
-                addMessage(data.response, 'assistant');
+                renderReasoningActionAndStep(data);
+                addAssistantBubble(data.response);
                 saveChatMessage({
                     user: 'Medical Assistant',
                     role: 'assistant',
@@ -225,7 +256,7 @@
             const messageInput = document.getElementById('messageInput');
             const charCounter = document.getElementById('charCounter');
             const currentLength = messageInput.value.length;
-            charCounter.textContent = `${currentLength}/500`;
+            charCounter.textContent = `${currentLength}/${CHAR_LIMIT}`;
         }
 
         function addAssistantMessage(text) {
@@ -260,6 +291,11 @@
             // Create collapsible reasoning box
             const detailsEl = document.createElement('details');
             detailsEl.style.margin = '10px';
+            detailsEl.style.border = '1px solid #e4e7ed';
+            detailsEl.style.borderRadius = '8px';
+            detailsEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            detailsEl.style.padding = '6px 8px';
+            detailsEl.open = false; // default collapsed
             const summaryEl = document.createElement('summary');
             summaryEl.innerHTML = '<b>Reasoning &amp; Action</b>';
             const preEl = document.createElement('pre');
@@ -274,6 +310,83 @@
             answerDiv.innerHTML = mainContentRaw.replace(/\n/g, '<br>');
 
             messagesDiv.appendChild(detailsEl);
+            messagesDiv.appendChild(answerDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // New: render Reasoning & Action from structured API response and show current step
+        function renderReasoningActionAndStep(apiData) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const ra = apiData?.reasoningAction || apiData?.['Reasoning & Action'] || apiData?.reasoning_action || apiData?.reasoning || '';
+            const step = (typeof apiData?.step === 'number') ? apiData.step : apiData?.step;
+            if (!ra && step === undefined && !('possible_diseases' in apiData)) return; // nothing to render
+
+            const detailsEl = document.createElement('details');
+            detailsEl.style.margin = '10px';
+            detailsEl.style.border = '1px solid #e4e7ed';
+            detailsEl.style.borderRadius = '8px';
+            detailsEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            detailsEl.style.padding = '6px 8px';
+            detailsEl.open = false; // default collapsed per requirement
+            const summaryEl = document.createElement('summary');
+            summaryEl.innerHTML = '<b>Reasoning &amp; Action</b>';
+            const bodyWrap = document.createElement('div');
+            bodyWrap.style.whiteSpace = 'pre-wrap';
+            bodyWrap.style.color = '#666';
+            bodyWrap.style.fontSize = '13px';
+            // Build fallback RA if missing
+            let raText = ra || '';
+            if (!raText) {
+                const s = apiData?.summary || {};
+                const obtained = [];
+                if (s.age || (apiData?.demographics && apiData.demographics.age)) obtained.push(`年龄${s.age || apiData.demographics.age}`);
+                if (s.sex || (apiData?.demographics && apiData.demographics.sex)) obtained.push(`${s.sex || apiData.demographics.sex}`);
+                if (Array.isArray(s.chief_complaints) && s.chief_complaints.length) obtained.push(`主诉${s.chief_complaints.join('、')}`);
+                const need = [];
+                if (step === 0 || step === '0') need.push('年龄','性别');
+                const kws = Array.isArray(s.chief_complaints) ? s.chief_complaints.slice(0,3).join(',') : '';
+                raText = `已经获得的信息：${obtained.join(', ')}；根据清单还需要询问的信息：${need.join(', ')}；关键词：${kws}`;
+            }
+            let normalized = (raText || '').replace(/\\n/g, '\n');
+            normalized = normalized.replace(/[；;]+/g, '\n');
+            bodyWrap.textContent = normalized;
+            detailsEl.appendChild(summaryEl);
+            detailsEl.appendChild(bodyWrap);
+
+            if (step !== undefined) {
+                const stepLine = document.createElement('div');
+                stepLine.style.margin = '6px 0 0 0';
+                stepLine.style.color = '#666';
+                stepLine.style.fontSize = '13px';
+                stepLine.textContent = `当前步骤：${step}`;
+                detailsEl.appendChild(stepLine);
+            }
+
+            // Show possible diseases if provided
+            if (apiData && 'possible_diseases' in apiData) {
+                const pd = apiData.possible_diseases;
+                const pdLine = document.createElement('div');
+                pdLine.style.margin = '4px 0 0 0';
+                pdLine.style.color = '#666';
+                pdLine.style.fontSize = '13px';
+                if (Array.isArray(pd)) {
+                    pdLine.textContent = `可能疾病：${pd.join(', ')}`;
+                } else {
+                    pdLine.textContent = `可能疾病：${pd}`;
+                }
+                detailsEl.appendChild(pdLine);
+            }
+
+            messagesDiv.appendChild(detailsEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // New: render assistant bubble from response text only (no parsing)
+        function addAssistantBubble(text) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'message assistant';
+            answerDiv.innerHTML = (text || '').replace(/\n/g, '<br>');
             messagesDiv.appendChild(answerDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
@@ -307,9 +420,11 @@
                 window.location.href = 'login.html';
             }
 
-            // Update chat title with user name if available
+            // Update title and put user name on the right side
             if (userName) {
-                document.getElementById('chatTitle').textContent = `Medical Assistant Chat - ${userName}`;
+                document.getElementById('chatTitle').textContent = 'Medical Assistant Chat';
+                const und2 = document.getElementById('userNameDisplay');
+                if (und2) und2.textContent = userName;
             }
 
             // Dynamic API base URL for local and production
@@ -328,19 +443,19 @@
                 });
             }
 
-            // ================= GUARANTEED HISTORY CHECK =================
+            // ================= GUARANTEED HISTORY CHECK + DEMOGRAPHICS =================
             // First: Clear any existing local chat history
             localStorage.removeItem('chatHistory');
             
             // Second: Check server-side history
             await checkRevisit();  // This will now show the dialog
-            
+            // Third: Ensure demographics collected when no history or after clear
+            await ensureDemographics();
             // Third: Focus input after history check completes
             document.getElementById('messageInput').focus();
             // ================= END FIX =================
 
             // ============ Inactivity auto-logout (30 min) ============
-            const INACT_MS = 30 * 60 * 1000; // 30 分钟
             let lastActivity = Date.now();
             const refreshActivity = () => { lastActivity = Date.now(); };
             ['click','keydown','mousemove','scroll'].forEach(ev => window.addEventListener(ev, refreshActivity));
@@ -362,6 +477,64 @@
             }, 60000); // check 每分钟
             // ============ End inactivity ============
         });
+    </script>
+    <script>
+        // Demographics modal + API hookup
+        async function ensureDemographics() {
+            const token = localStorage.getItem('token');
+            const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
+            try {
+                const r = await fetch(API_BASE + '/api/user/state', { headers: { 'Authorization': `Bearer ${token}` }});
+                if (!r.ok) return; 
+                const st = await r.json();
+                const hr = await fetch(API_BASE + '/api/history', { headers: { 'Authorization': `Bearer ${token}` }});
+                let hasHistory = false;
+                if (hr.ok) {
+                    const hist = await hr.json();
+                    hasHistory = Array.isArray(hist) && hist.length > 0;
+                }
+                const needDialog = !st?.demographics_known || !st?.age || !st?.sex || !hasHistory;
+                if (needDialog) {
+                    await openDemoDialog();
+                }
+            } catch (e) {
+                console.warn('ensureDemographics failed', e);
+            }
+        }
+
+        function openDemoDialog() {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('demoOverlay');
+                const okBtn = document.getElementById('demoOkBtn');
+                const ageInput = document.getElementById('ageInput');
+                const sexSelect = document.getElementById('sexSelect');
+                const err = document.getElementById('demoError');
+                const token = localStorage.getItem('token');
+                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
+                overlay.style.display = 'flex';
+                err.style.display = 'none';
+                const submit = async () => {
+                    const age = parseInt(ageInput.value, 10);
+                    const sex = sexSelect.value;
+                    if (!(Number.isFinite(age) && age >= 0 && age <= 120 && (sex === '男' || sex === '女'))) {
+                        err.style.display = 'block';
+                        return;
+                    }
+                    try {
+                        await fetch(API_BASE + '/api/user/demographics', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ age, sex })
+                        });
+                    } finally {
+                        overlay.style.display = 'none';
+                        resolve();
+                    }
+                };
+                okBtn.onclick = submit;
+                // 跳过按钮已移除
+            });
+        }
     </script>
 </body>
 </html> 
