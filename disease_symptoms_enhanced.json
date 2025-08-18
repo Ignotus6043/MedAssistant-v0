@@ -1,0 +1,2338 @@
+[
+  {
+    "system": "A",
+    "system_name": "呼吸系统疾病",
+    "id": 1,
+    "name": "感冒/流感/过敏性鼻炎",
+    "symptoms": [
+      {
+        "name": "鼻塞",
+        "symptom_id": 1,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "鼻塞程度影响呼吸和睡眠质量"
+      },
+      {
+        "name": "流涕",
+        "symptom_id": 2,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "清水样", "黄稠", "黏滞"],
+        "notes": "鼻涕性质有助于区分病毒/细菌感染"
+      },
+      {
+        "name": "咳嗽",
+        "symptom_id": 3,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "干咳", "湿咳", "刺激性"],
+        "notes": "咳嗽性质有助于判断感染类型"
+      },
+      {
+        "name": "发热",
+        "symptom_id": 4,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "低热<38℃", "中度38-39℃", "高热>39℃"],
+        "notes": "高热常见于流感或细菌感染"
+      },
+      {
+        "name": "年龄",
+        "symptom_id": 5,
+        "type": "人口统计学",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["<6岁", "6-60岁", ">60岁"],
+        "notes": "年龄影响治疗方案选择"
+      },
+      {
+        "name": "喉咙痛程度",
+        "symptom_id": 6,
+        "type": "现病史",
+        "priority": 4,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "严重咽痛可能提示链球菌感染"
+      },
+      {
+        "name": "咳嗽干湿",
+        "symptom_id": 7,
+        "type": "现病史",
+        "priority": 5,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["干咳", "湿咳", "混合"],
+        "notes": "湿咳提示有痰液产生"
+      },
+      {
+        "name": "乏力",
+        "symptom_id": 8,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "乏力程度反映疾病严重性"
+      },
+      {
+        "name": "症状持续时间",
+        "symptom_id": 9,
+        "type": "现病史",
+        "priority": 7,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["<3天", "3-7天", ">7天"],
+        "notes": "持续时间超过7天需考虑并发症"
+      },
+      {
+        "name": "接触史",
+        "symptom_id": 10,
+        "type": "伴随症状",
+        "priority": 8,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有感冒患者接触", "有流感患者接触"],
+        "notes": "接触史有助于判断传染性"
+      },
+      {
+        "name": "过敏史",
+        "symptom_id": 11,
+        "type": "伴随症状",
+        "priority": 9,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "花粉过敏", "尘螨过敏", "其他"],
+        "notes": "过敏史提示过敏性鼻炎可能"
+      },
+      {
+        "name": "特殊人群",
+        "symptom_id": 12,
+        "type": "风险因素",
+        "priority": 10,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["婴幼儿", "孕妇", "老年人", "否"],
+        "notes": "属于高危人群需优先就诊"
+      },
+      {
+        "name": "职业风险",
+        "symptom_id": 13,
+        "type": "风险因素",
+        "priority": 11,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["医护人员", "教师", "其他", "无"],
+        "notes": "职业暴露风险影响预防措施"
+      }
+    ]
+  },
+  {
+    "system": "A",
+    "system_name": "呼吸系统疾病",
+    "id": 2,
+    "name": "急性/慢性支气管炎（含COPD加重）",
+    "symptoms": [
+      {
+        "name": "持续咳嗽",
+        "symptom_id": 14,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "间歇性", "持续性", "夜间加重"],
+        "notes": "持续咳嗽超过3周需考虑慢性支气管炎"
+      },
+      {
+        "name": "咳痰",
+        "symptom_id": 15,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无痰", "白痰", "黄痰", "脓痰"],
+        "notes": "脓痰提示细菌感染"
+      },
+      {
+        "name": "呼吸困难",
+        "symptom_id": 16,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "重度呼吸困难需立即就医"
+      },
+      {
+        "name": "吸烟史",
+        "symptom_id": 17,
+        "type": "现病史",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "<10年", "10-20年", ">20年"],
+        "notes": "吸烟史是COPD主要危险因素"
+      },
+      {
+        "name": "慢性咳嗽史",
+        "symptom_id": 18,
+        "type": "现病史",
+        "priority": 4,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "<1年", "1-3年", ">3年"],
+        "notes": "长期咳嗽史提示慢性支气管炎"
+      },
+      {
+        "name": "急性加重诱因",
+        "symptom_id": 19,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["感染", "空气污染", "过敏", "其他"],
+        "notes": "了解诱因有助于预防复发"
+      },
+      {
+        "name": "听诊哮鸣音",
+        "symptom_id": 20,
+        "type": "体格检查",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "哮鸣音提示气道阻塞"
+      },
+      {
+        "name": "低热",
+        "symptom_id": 21,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "<38℃", "38-38.5℃"],
+        "notes": "低热常见于病毒感染"
+      },
+      {
+        "name": "既往COPD",
+        "symptom_id": 22,
+        "type": "既往史",
+        "priority": 8,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "COPD患者急性加重风险高"
+      }
+    ]
+  },
+  {
+    "system": "A",
+    "system_name": "呼吸系统疾病",
+    "id": 3,
+    "name": "支气管哮喘急性发作",
+    "symptoms": [
+      {
+        "name": "阵发性呼吸困难",
+        "symptom_id": 23,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "重度呼吸困难需立即就医"
+      },
+      {
+        "name": "喘息",
+        "symptom_id": 24,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "喘息是哮喘特征性症状"
+      },
+      {
+        "name": "哮喘病史",
+        "symptom_id": 25,
+        "type": "现病史",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "有", "控制良好", "控制不佳"],
+        "notes": "既往哮喘史影响治疗方案"
+      },
+      {
+        "name": "过敏史",
+        "symptom_id": 26,
+        "type": "现病史",
+        "priority": 4,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "花粉", "尘螨", "食物", "药物"],
+        "notes": "过敏史是哮喘重要诱因"
+      },
+      {
+        "name": "家庭史",
+        "symptom_id": 27,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有哮喘史", "有过敏史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "吸入药物使用",
+        "symptom_id": 28,
+        "type": "现病史",
+        "priority": 6,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有但无效", "有且有效"],
+        "notes": "药物效果反映病情严重程度"
+      },
+      {
+        "name": "诱发因素",
+        "symptom_id": 29,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["运动", "感染", "过敏原", "其他"],
+        "notes": "了解诱因有助于预防"
+      },
+      {
+        "name": "SpO2",
+        "symptom_id": 30,
+        "type": "体格检查",
+        "priority": 8,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": [">95%", "90-95%", "<90%"],
+        "notes": "SpO2<90%提示严重缺氧"
+      }
+    ]
+  },
+  {
+    "system": "A",
+    "system_name": "呼吸系统疾病",
+    "id": 4,
+    "name": "急性咽炎/扁桃体炎",
+    "symptoms": [
+      {
+        "name": "喉咙痛",
+        "symptom_id": 31,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "喉咙痛是急性咽炎/扁桃体炎的主要症状"
+      },
+      {
+        "name": "吞咽困难",
+        "symptom_id": 32,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "重度吞咽困难提示严重感染或并发症"
+      },
+      {
+        "name": "发热",
+        "symptom_id": 33,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "低热<38℃", "中度38-39℃", "高热>39℃"],
+        "notes": "高热提示细菌感染可能"
+      },
+      {
+        "name": "声嘶",
+        "symptom_id": 34,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "声嘶常见于咽喉部炎症"
+      },
+      {
+        "name": "淋巴结肿大",
+        "symptom_id": 35,
+        "type": "体格检查",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "颈部淋巴结肿大提示感染扩散"
+      },
+      {
+        "name": "反复发作史",
+        "symptom_id": 36,
+        "type": "既往史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "反复发作提示慢性炎症或免疫异常"
+      },
+      {
+        "name": "链球菌相关症状",
+        "symptom_id": 37,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "猩红热样皮疹", "咽峡炎", "化脓性分泌物"],
+        "notes": "链球菌感染需及时抗生素治疗"
+      }
+    ]
+  },
+  {
+    "system": "A",
+    "system_name": "呼吸系统疾病",
+    "id": 5,
+    "name": "急性鼻窦炎",
+    "symptoms": [
+      {
+        "name": "面部胀痛",
+        "symptom_id": 38,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "单侧", "双侧", "持续性"],
+        "notes": "面部胀痛是鼻窦炎的典型表现"
+      },
+      {
+        "name": "黄涕>10天",
+        "symptom_id": 39,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "有"],
+        "notes": "黄涕持续超过10天提示细菌感染"
+      },
+      {
+        "name": "单侧症状",
+        "symptom_id": 40,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有"],
+        "notes": "单侧症状常见于细菌性鼻窦炎"
+      },
+      {
+        "name": "原发感冒史",
+        "symptom_id": 41,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有"],
+        "notes": "感冒后继发鼻窦炎较常见"
+      },
+      {
+        "name": "牙痛",
+        "symptom_id": 42,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "上颌窦炎可引起牙痛"
+      },
+      {
+        "name": "复发史",
+        "symptom_id": 43,
+        "type": "既往史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "复发提示慢性鼻窦炎倾向"
+      }
+    ]
+  },
+  {
+    "system": "A",
+    "system_name": "呼吸系统疾病",
+    "id": 6,
+    "name": "社区获得性肺炎（CAP）",
+    "symptoms": [
+      {
+        "name": "发热+咳嗽",
+        "symptom_id": 44,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "有"],
+        "notes": "发热伴咳嗽是肺炎的主要表现"
+      },
+      {
+        "name": "胸痛/呼吸困难",
+        "symptom_id": 45,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "胸痛", "呼吸困难", "两者均有"],
+        "notes": "呼吸困难为肺炎重症表现"
+      },
+      {
+        "name": "免疫状态",
+        "symptom_id": 46,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["正常", "免疫低下", "慢性病"],
+        "notes": "免疫低下患者肺炎风险高"
+      },
+      {
+        "name": "听诊罗音",
+        "symptom_id": 47,
+        "type": "体格检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "干啰音", "湿啰音", "痰鸣音"],
+        "notes": "罗音提示肺部实变或分泌物"
+      },
+      {
+        "name": "胸片异常",
+        "symptom_id": 48,
+        "type": "辅助检查",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "片状阴影", "实变影", "空洞影"],
+        "notes": "胸片异常有助于确诊肺炎"
+      },
+      {
+        "name": "CURB-65评分",
+        "symptom_id": 49,
+        "type": "评估工具",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["0", "1", "2", "3", "4", "5"],
+        "notes": "CURB-65评分用于评估肺炎严重程度"
+      }
+    ]
+  },
+  {
+    "system": "B",
+    "system_name": "消化系统疾病",
+    "id": 7,
+    "name": "急性胃肠炎",
+    "symptoms": [
+      {
+        "name": "腹泻",
+        "symptom_id": 60,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "腹泻频率和性状有助于判断病因"
+      },
+      {
+        "name": "呕吐",
+        "symptom_id": 61,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "频繁呕吐可能导致脱水"
+      },
+      {
+        "name": "发热",
+        "symptom_id": 62,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "低热<38℃", "中度38-39℃", "高热>39℃"],
+        "notes": "高热提示细菌感染可能"
+      },
+      {
+        "name": "粪便性状",
+        "symptom_id": 63,
+        "type": "现病史",
+        "priority": 4,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["水样便", "稀便", "黏液便", "血便"],
+        "notes": "血便提示炎症性肠病或感染"
+      },
+      {
+        "name": "食物中毒史",
+        "symptom_id": 64,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "可疑食物", "集体用餐", "外出就餐"],
+        "notes": "食物中毒史有助于病因诊断"
+      },
+      {
+        "name": "脱水征象",
+        "symptom_id": 65,
+        "type": "体格检查",
+        "priority": 6,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "重度脱水需立即补液治疗"
+      },
+      {
+        "name": "旅行/集体暴发史",
+        "symptom_id": 66,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有旅行史", "有集体暴发"],
+        "notes": "旅行史或集体暴发提示传染性腹泻"
+      }
+    ]
+  },
+  {
+    "system": "B",
+    "system_name": "消化系统疾病",
+    "id": 8,
+    "name": "胃食管反流病（GERD）",
+    "symptoms": [
+      {
+        "name": "烧心",
+        "symptom_id": 67,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "偶尔", "频繁", "持续性"],
+        "notes": "烧心是GERD的典型症状"
+      },
+      {
+        "name": "反酸",
+        "symptom_id": 68,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "偶尔", "频繁", "持续性"],
+        "notes": "反酸常伴随烧心"
+      },
+      {
+        "name": "胸骨后灼热",
+        "symptom_id": 69,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "偶尔", "频繁", "持续性"],
+        "notes": "胸骨后灼热为GERD常见表现"
+      },
+      {
+        "name": "夜间或平卧加重",
+        "symptom_id": 70,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "夜间加重", "平卧加重", "均有"],
+        "notes": "夜间或平卧加重提示胃食管反流"
+      },
+      {
+        "name": "饮食相关",
+        "symptom_id": 71,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "进食后加重", "进食后缓解"],
+        "notes": "症状与饮食关系有助于诊断"
+      },
+      {
+        "name": "慢性咳嗽",
+        "symptom_id": 72,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "GERD可引起慢性咳嗽"
+      },
+      {
+        "name": "哮喘/咽喉症状",
+        "symptom_id": 73,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有哮喘", "有咽喉症状", "均有"],
+        "notes": "GERD可诱发哮喘或咽喉不适"
+      }
+    ]
+  },
+  {
+    "system": "B",
+    "system_name": "消化系统疾病",
+    "id": 9,
+    "name": "胃/十二指肠溃疡",
+    "symptoms": [
+      {
+        "name": "上腹痛",
+        "symptom_id": 74,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "上腹痛是溃疡病的主要症状"
+      },
+      {
+        "name": "有/无进食相关",
+        "symptom_id": 75,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "进食后加重", "空腹加重"],
+        "notes": "症状与进食关系有助于鉴别溃疡类型"
+      },
+      {
+        "name": "NSAID/幽门螺杆菌史",
+        "symptom_id": 76,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "NSAID使用", "Hp阳性"],
+        "notes": "NSAID和Hp感染是溃疡主要危险因素"
+      },
+      {
+        "name": "贫血",
+        "symptom_id": 77,
+        "type": "体格检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "贫血提示慢性失血或并发症"
+      },
+      {
+        "name": "黑便",
+        "symptom_id": 78,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "黑便提示消化道出血"
+      },
+      {
+        "name": "消瘦",
+        "symptom_id": 79,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "消瘦提示慢性消化道疾病或恶性肿瘤"
+      }
+    ]
+  },
+  {
+    "system": "B",
+    "system_name": "消化系统疾病",
+    "id": 10,
+    "name": "肠易激综合征（IBS）",
+    "symptoms": [
+      {
+        "name": "腹痛伴排便习惯改变",
+        "symptom_id": 80,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "腹泻型", "便秘型", "混合型"],
+        "notes": "腹痛伴排便习惯改变是IBS的核心表现"
+      },
+      {
+        "name": "缓解因素",
+        "symptom_id": 81,
+        "type": "现病史",
+        "priority": 2,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["排便后缓解", "进食后缓解", "无明显缓解"],
+        "notes": "缓解因素有助于鉴别功能性疾病"
+      },
+      {
+        "name": "排便后缓解",
+        "symptom_id": 82,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有"],
+        "notes": "排便后缓解是IBS的典型表现"
+      },
+      {
+        "name": "警示症状",
+        "symptom_id": 83,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "消瘦", "便血", "夜间症状"],
+        "notes": "警示症状提示器质性疾病需排查"
+      }
+    ]
+  },
+  {
+    "system": "B",
+    "system_name": "消化系统疾病",
+    "id": 11,
+    "name": "胆石症/胆囊炎",
+    "symptoms": [
+      {
+        "name": "右上腹绞痛",
+        "symptom_id": 84,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "右上腹绞痛是胆石症/胆囊炎的典型表现，重度需警惕并发症"
+      },
+      {
+        "name": "油腻食物诱发",
+        "symptom_id": 85,
+        "type": "现病史",
+        "priority": 2,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有"],
+        "notes": "油腻食物诱发提示胆囊收缩异常"
+      },
+      {
+        "name": "有无黄疸",
+        "symptom_id": 86,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "有"],
+        "notes": "黄疸提示胆道梗阻或并发症"
+      },
+      {
+        "name": "Murphy征",
+        "symptom_id": 87,
+        "type": "体格检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["阴性", "阳性"],
+        "notes": "Murphy征阳性提示急性胆囊炎"
+      },
+      {
+        "name": "反复发作史",
+        "symptom_id": 88,
+        "type": "既往史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "反复发作提示慢性胆囊疾病"
+      }
+    ]
+  },
+  {
+    "system": "C",
+    "system_name": "泌尿生殖系统疾病",
+    "id": 12,
+    "name": "膀胱炎",
+    "symptoms": [
+      {
+        "name": "尿频",
+        "symptom_id": 89,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "尿频是膀胱炎的主要症状"
+      },
+      {
+        "name": "尿急",
+        "symptom_id": 90,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "尿急常伴随尿路感染"
+      },
+      {
+        "name": "尿痛",
+        "symptom_id": 91,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "尿痛是膀胱炎的典型表现"
+      },
+      {
+        "name": "性生活史",
+        "symptom_id": 92,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有"],
+        "notes": "性生活史是女性膀胱炎的危险因素"
+      },
+      {
+        "name": "既往尿路感染",
+        "symptom_id": 93,
+        "type": "既往史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "既往感染史提示复发风险"
+      },
+      {
+        "name": "糖尿病",
+        "symptom_id": 94,
+        "type": "既往史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "有"],
+        "notes": "糖尿病患者易并发复杂性尿路感染"
+      },
+      {
+        "name": "留置导尿",
+        "symptom_id": 95,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "有"],
+        "notes": "留置导尿是复杂性尿路感染的高危因素"
+      },
+      {
+        "name": "尿常规白细胞/亚硝酸盐",
+        "symptom_id": 96,
+        "type": "辅助检查",
+        "priority": 8,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["正常", "白细胞+", "亚硝酸盐+", "均有"],
+        "notes": "尿常规异常有助于确诊膀胱炎"
+      }
+    ]
+  },
+  {
+    "system": "C",
+    "system_name": "泌尿生殖系统疾病",
+    "id": 13,
+    "name": "肾盂肾炎",
+    "symptoms": [
+      {
+        "name": "发热",
+        "symptom_id": 97,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "低热", "中度", "高热>39℃"],
+        "notes": "高热是肾盂肾炎的主要表现，重度需警惕败血症"
+      },
+      {
+        "name": "腰痛",
+        "symptom_id": 98,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "腰痛为肾区感染的典型表现"
+      },
+      {
+        "name": "尿路症状",
+        "symptom_id": 99,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "尿频", "尿急", "尿痛"],
+        "notes": "尿路症状常伴随肾盂肾炎"
+      },
+      {
+        "name": "糖尿病",
+        "symptom_id": 100,
+        "type": "既往史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "有"],
+        "notes": "糖尿病患者肾盂肾炎风险高"
+      },
+      {
+        "name": "免疫低下",
+        "symptom_id": 101,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "有"],
+        "notes": "免疫低下是复杂性肾盂肾炎的危险因素"
+      },
+      {
+        "name": "梗阻风险",
+        "symptom_id": 102,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "有结石", "有肿瘤", "其他"],
+        "notes": "梗阻风险需及时处理以防肾功能损害"
+      },
+      {
+        "name": "尿培养",
+        "symptom_id": 103,
+        "type": "辅助检查",
+        "priority": 7,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["未做", "阴性", "阳性"],
+        "notes": "尿培养有助于指导抗生素选择"
+      },
+      {
+        "name": "血象",
+        "symptom_id": 104,
+        "type": "辅助检查",
+        "priority": 8,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["正常", "白细胞升高", "中性粒升高"],
+        "notes": "血象异常提示感染严重程度"
+      },
+      {
+        "name": "超声",
+        "symptom_id": 105,
+        "type": "辅助检查",
+        "priority": 9,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["未做", "正常", "肾积水", "肾脓肿"],
+        "notes": "超声有助于发现并发症"
+      }
+    ]
+  },
+  {
+    "system": "C",
+    "system_name": "泌尿生殖系统疾病",
+    "id": 14,
+    "name": "尿路结石",
+    "symptoms": [
+      {
+        "name": "剧烈腰/腹痛",
+        "symptom_id": 106,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "剧烈腰/腹痛是结石绞痛的典型表现"
+      },
+      {
+        "name": "排尿困难",
+        "symptom_id": 107,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "结石可引起排尿困难"
+      },
+      {
+        "name": "血尿",
+        "symptom_id": 108,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "镜下血尿", "肉眼血尿"],
+        "notes": "血尿提示泌尿道损伤"
+      },
+      {
+        "name": "B超/CT显影",
+        "symptom_id": 109,
+        "type": "辅助检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["未做", "结石影", "无异常"],
+        "notes": "影像学检查有助于确诊结石"
+      },
+      {
+        "name": "饮水习惯",
+        "symptom_id": 110,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["充足", "较少", "极少"],
+        "notes": "饮水不足是结石形成的危险因素"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 111,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有结石史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "代谢异常",
+        "symptom_id": 112,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "高尿钙", "高尿酸", "其他"],
+        "notes": "代谢异常是结石形成的重要原因"
+      }
+    ]
+  },
+  {
+    "system": "C",
+    "system_name": "泌尿生殖系统疾病",
+    "id": 15,
+    "name": "前列腺炎（男性）",
+    "symptoms": [
+      {
+        "name": "盆底/会阴疼痛",
+        "symptom_id": 113,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "盆底/会阴疼痛是前列腺炎的主要表现"
+      },
+      {
+        "name": "排尿不适",
+        "symptom_id": 114,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "偶尔", "频繁"],
+        "notes": "排尿不适常见于前列腺炎"
+      },
+      {
+        "name": "前列腺压痛",
+        "symptom_id": 115,
+        "type": "体格检查",
+        "priority": 3,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "前列腺压痛提示急性炎症"
+      },
+      {
+        "name": "尿常规",
+        "symptom_id": 116,
+        "type": "辅助检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["正常", "白细胞+", "红细胞+"],
+        "notes": "尿常规异常提示感染"
+      },
+      {
+        "name": "PSA",
+        "symptom_id": 117,
+        "type": "辅助检查",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["正常", "升高"],
+        "notes": "PSA升高需排除前列腺癌"
+      },
+      {
+        "name": "性病史",
+        "symptom_id": 118,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有"],
+        "notes": "性病史是慢性前列腺炎的危险因素"
+      },
+      {
+        "name": "导尿史",
+        "symptom_id": 119,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 1,
+        "options": ["无", "有"],
+        "notes": "导尿史增加感染风险"
+      },
+      {
+        "name": "免疫状态",
+        "symptom_id": 120,
+        "type": "现病史",
+        "priority": 8,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 1,
+        "options": ["正常", "免疫低下"],
+        "notes": "免疫低下患者感染风险高"
+      }
+    ]
+  },
+  {
+    "system": "C",
+    "system_name": "泌尿生殖系统疾病",
+    "id": 16,
+    "name": "多囊卵巢综合征（PCOS）",
+    "symptoms": [
+      {
+        "name": "月经不调",
+        "symptom_id": 121,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "稀发月经", "闭经", "月经过多"],
+        "notes": "月经不调是PCOS的主要表现"
+      },
+      {
+        "name": "排卵障碍",
+        "symptom_id": 122,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "有"],
+        "notes": "排卵障碍导致不孕"
+      },
+      {
+        "name": "多囊卵巢影像",
+        "symptom_id": 123,
+        "type": "辅助检查",
+        "priority": 3,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "有"],
+        "notes": "B超发现多囊卵巢为诊断依据"
+      },
+      {
+        "name": "雄激素过高表现",
+        "symptom_id": 124,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "痤疮", "多毛", "脱发"],
+        "notes": "高雄激素表现为PCOS常见症状"
+      },
+      {
+        "name": "代谢综合征",
+        "symptom_id": 125,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "肥胖", "高血压", "糖尿病"],
+        "notes": "代谢综合征增加心血管风险"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 126,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有PCOS史", "有糖尿病史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "BMI",
+        "symptom_id": 127,
+        "type": "体格检查",
+        "priority": 7,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["<18.5", "18.5-24.9", "25-29.9", ">=30"],
+        "notes": "BMI升高提示肥胖，增加PCOS风险"
+      },
+      {
+        "name": "用药史",
+        "symptom_id": 128,
+        "type": "现病史",
+        "priority": 8,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有口服避孕药", "有降糖药"],
+        "notes": "用药史有助于评估治疗反应"
+      }
+    ]
+  },
+  {
+    "system": "D",
+    "system_name": "代谢/慢性疾病",
+    "id": 17,
+    "name": "原发性高血压",
+    "symptoms": [
+      {
+        "name": "血压水平",
+        "symptom_id": 129,
+        "type": "体格检查",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["正常<120/80", "正常高值120-139/80-89", "1级140-159/90-99", "2级160-179/100-109", "3级≥180/110"],
+        "notes": "血压分级决定治疗方案"
+      },
+      {
+        "name": "年龄",
+        "symptom_id": 130,
+        "type": "人口统计学",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["<40岁", "40-60岁", ">60岁"],
+        "notes": "年龄影响高血压风险"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 131,
+        "type": "现病史",
+        "priority": 3,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "父母", "兄弟姐妹", "其他"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "生活方式",
+        "symptom_id": 132,
+        "type": "现病史",
+        "priority": 4,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["良好", "吸烟", "饮酒", "缺乏运动", "高盐饮食"],
+        "notes": "生活方式影响血压控制"
+      },
+      {
+        "name": "靶器官损害",
+        "symptom_id": 133,
+        "type": "现病史",
+        "priority": 5,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "心脏", "肾脏", "眼底", "脑血管"],
+        "notes": "靶器官损害提示高血压并发症"
+      }
+    ]
+  },
+  {
+    "system": "D",
+    "system_name": "代谢/慢性疾病",
+    "id": 18,
+    "name": "2型糖尿病",
+    "symptoms": [
+      {
+        "name": "空腹/餐后血糖",
+        "symptom_id": 134,
+        "type": "辅助检查",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["正常", "升高", "极高"],
+        "notes": "血糖水平决定诊断和治疗"
+      },
+      {
+        "name": "HbA1c",
+        "symptom_id": 135,
+        "type": "辅助检查",
+        "priority": 2,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["<6.5%", "6.5-7.5%", ">7.5%"],
+        "notes": "HbA1c反映长期血糖控制"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 136,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有糖尿病史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "肥胖",
+        "symptom_id": 137,
+        "type": "体格检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "超重", "肥胖"],
+        "notes": "肥胖是2型糖尿病的重要危险因素"
+      },
+      {
+        "name": "代谢综合征",
+        "symptom_id": 138,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "高血压", "高血脂", "中心性肥胖"],
+        "notes": "代谢综合征增加并发症风险"
+      },
+      {
+        "name": "并发症",
+        "symptom_id": 139,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "视网膜病变", "肾病", "神经病变", "足溃疡"],
+        "notes": "并发症提示糖尿病控制不佳"
+      }
+    ]
+  },
+  {
+    "system": "D",
+    "system_name": "代谢/慢性疾病",
+    "id": 19,
+    "name": "高脂血症",
+    "symptoms": [
+      {
+        "name": "血脂谱",
+        "symptom_id": 140,
+        "type": "辅助检查",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["正常", "TC升高", "LDL升高", "TG升高"],
+        "notes": "血脂谱异常决定治疗方案"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 141,
+        "type": "现病史",
+        "priority": 2,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有高脂血症史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "饮食结构",
+        "symptom_id": 142,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["健康", "高脂肪", "高糖"],
+        "notes": "不良饮食结构是高脂血症危险因素"
+      },
+      {
+        "name": "BMI",
+        "symptom_id": 143,
+        "type": "体格检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["<18.5", "18.5-24.9", "25-29.9", ">=30"],
+        "notes": "BMI升高提示肥胖，增加高脂血症风险"
+      },
+      {
+        "name": "代谢病",
+        "symptom_id": 144,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "糖尿病", "高血压"],
+        "notes": "代谢病增加心血管风险"
+      },
+      {
+        "name": "动脉粥样硬化症状",
+        "symptom_id": 145,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "心绞痛", "中风史", "外周血管病"],
+        "notes": "动脉粥样硬化是高脂血症的严重并发症"
+      }
+    ]
+  },
+  {
+    "system": "D",
+    "system_name": "代谢/慢性疾病",
+    "id": 20,
+    "name": "痛风",
+    "symptoms": [
+      {
+        "name": "关节急性红肿痛",
+        "symptom_id": 146,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "关节急性红肿痛是痛风发作的典型表现"
+      },
+      {
+        "name": "嘌呤高食",
+        "symptom_id": 147,
+        "type": "现病史",
+        "priority": 2,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "经常", "偶尔"],
+        "notes": "高嘌呤饮食是痛风发作诱因"
+      },
+      {
+        "name": "血尿酸",
+        "symptom_id": 148,
+        "type": "辅助检查",
+        "priority": 3,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["正常", "升高", "极高"],
+        "notes": "血尿酸升高是痛风诊断依据"
+      },
+      {
+        "name": "肾功能",
+        "symptom_id": 149,
+        "type": "辅助检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["正常", "轻度受损", "中度受损", "重度受损"],
+        "notes": "肾功能损害常见于慢性痛风"
+      },
+      {
+        "name": "酒精史",
+        "symptom_id": 150,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "偶尔", "经常"],
+        "notes": "饮酒是痛风发作的危险因素"
+      },
+      {
+        "name": "结石",
+        "symptom_id": 151,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "肾结石", "输尿管结石"],
+        "notes": "痛风患者易并发尿路结石"
+      },
+      {
+        "name": "合并慢病",
+        "symptom_id": 152,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "高血压", "糖尿病", "高脂血症"],
+        "notes": "合并慢病增加痛风管理难度"
+      }
+    ]
+  },
+  {
+    "system": "D",
+    "system_name": "代谢/慢性疾病",
+    "id": 21,
+    "name": "骨质疏松",
+    "symptoms": [
+      {
+        "name": "骨密度T值",
+        "symptom_id": 153,
+        "type": "辅助检查",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": [">-1", "-1~-2.5", "≤-2.5"],
+        "notes": "骨密度T值是骨质疏松诊断标准"
+      },
+      {
+        "name": "年龄/绝经",
+        "symptom_id": 154,
+        "type": "人口统计学",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["<50岁", "50-65岁", ">65岁", "绝经后"],
+        "notes": "高龄和绝经是骨质疏松高危因素"
+      },
+      {
+        "name": "既往骨折史",
+        "symptom_id": 155,
+        "type": "既往史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "有脆性骨折史"],
+        "notes": "既往骨折史提示骨质疏松风险高"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 156,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有骨质疏松史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "糖皮质激素",
+        "symptom_id": 157,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "长期使用"],
+        "notes": "长期糖皮质激素使用增加骨质疏松风险"
+      },
+      {
+        "name": "钙维D",
+        "symptom_id": 158,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["充足", "不足"],
+        "notes": "钙和维生素D摄入不足影响骨健康"
+      },
+      {
+        "name": "运动习惯",
+        "symptom_id": 159,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["规律", "偶尔", "无"],
+        "notes": "运动有助于预防骨质疏松"
+      }
+    ]
+  },
+  {
+    "system": "E",
+    "system_name": "神经/精神健康",
+    "id": 22,
+    "name": "偏头痛",
+    "symptoms": [
+      {
+        "name": "头痛部位单侧",
+        "symptom_id": 160,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "左侧", "右侧", "双侧"],
+        "notes": "单侧搏动性头痛为偏头痛典型表现"
+      },
+      {
+        "name": "搏动性",
+        "symptom_id": 161,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "搏动性", "压榨性"],
+        "notes": "搏动性头痛常见于偏头痛"
+      },
+      {
+        "name": "先兆",
+        "symptom_id": 162,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "视觉先兆", "感觉先兆", "语言先兆"],
+        "notes": "先兆有助于偏头痛分型"
+      },
+      {
+        "name": "持续时间",
+        "symptom_id": 163,
+        "type": "现病史",
+        "priority": 4,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["<4小时", "4-72小时", ">72小时"],
+        "notes": "持续时间有助于鉴别诊断"
+      },
+      {
+        "name": "恶心",
+        "symptom_id": 164,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "恶心常伴随偏头痛"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 165,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有偏头痛史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "触发因素",
+        "symptom_id": 166,
+        "type": "现病史",
+        "priority": 7,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "饮食", "情绪", "环境"],
+        "notes": "触发因素有助于预防发作"
+      }
+    ]
+  },
+  {
+    "system": "E",
+    "system_name": "神经/精神健康",
+    "id": 23,
+    "name": "紧张型头痛",
+    "symptoms": [
+      {
+        "name": "双侧压榨性疼痛",
+        "symptom_id": 167,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "双侧压榨性疼痛为紧张型头痛典型表现"
+      },
+      {
+        "name": "无恶心",
+        "symptom_id": 168,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "有轻度恶心"],
+        "notes": "紧张型头痛通常无明显恶心"
+      },
+      {
+        "name": "压力/紧张史",
+        "symptom_id": 169,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "近期压力大", "长期紧张"],
+        "notes": "压力和紧张是常见诱因"
+      },
+      {
+        "name": "颈肩肌紧张",
+        "symptom_id": 170,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有"],
+        "notes": "颈肩肌紧张常伴随紧张型头痛"
+      },
+      {
+        "name": "睡眠",
+        "symptom_id": 171,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["良好", "失眠", "多梦"],
+        "notes": "睡眠障碍可加重头痛"
+      },
+      {
+        "name": "心理状态",
+        "symptom_id": 172,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["良好", "焦虑", "抑郁"],
+        "notes": "心理状态影响头痛发作"
+      }
+    ]
+  },
+  {
+    "system": "E",
+    "system_name": "神经/精神健康",
+    "id": 24,
+    "name": "轻度认知障碍/阿尔茨海默病",
+    "symptoms": [
+      {
+        "name": "短时记忆减退",
+        "symptom_id": 173,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "短时记忆减退是认知障碍的核心表现"
+      },
+      {
+        "name": "日常功能受损",
+        "symptom_id": 174,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "日常功能受损提示病情进展"
+      },
+      {
+        "name": "MoCA/MMSE",
+        "symptom_id": 175,
+        "type": "评估工具",
+        "priority": 3,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": [">26", "24-26", "20-23", "<20"],
+        "notes": "量表分数用于认知障碍分级"
+      },
+      {
+        "name": "影像学",
+        "symptom_id": 176,
+        "type": "辅助检查",
+        "priority": 4,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["正常", "海马萎缩", "脑萎缩"],
+        "notes": "影像学有助于鉴别诊断"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 177,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有阿尔茨海默病史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "血管风险",
+        "symptom_id": 178,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "高血压", "糖尿病", "高脂血症"],
+        "notes": "血管风险因素增加认知障碍风险"
+      }
+    ]
+  },
+  {
+    "system": "E",
+    "system_name": "神经/精神健康",
+    "id": 25,
+    "name": "焦虑障碍",
+    "symptoms": [
+      {
+        "name": "持续性焦虑",
+        "symptom_id": 179,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 5,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "持续性焦虑是焦虑障碍的核心表现"
+      },
+      {
+        "name": "难以控制",
+        "symptom_id": 180,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": true,
+        "judgment_weight": 4,
+        "options": ["无", "偶尔", "频繁", "持续性"],
+        "notes": "难以控制的焦虑提示病情严重"
+      },
+      {
+        "name": "触发因素",
+        "symptom_id": 181,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "生活事件", "工作压力", "其他"],
+        "notes": "触发因素有助于心理干预"
+      },
+      {
+        "name": "失眠/心悸",
+        "symptom_id": 182,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "失眠", "心悸", "均有"],
+        "notes": "失眠和心悸常伴随焦虑障碍"
+      },
+      {
+        "name": "社交功能",
+        "symptom_id": 183,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["正常", "轻度受损", "中度受损", "重度受损"],
+        "notes": "社交功能受损提示焦虑障碍影响生活"
+      },
+      {
+        "name": "用药史",
+        "symptom_id": 184,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有抗焦虑药物史"],
+        "notes": "用药史有助于评估治疗反应"
+      }
+    ]
+  },
+  {
+    "system": "F",
+    "system_name": "皮肤/免疫系统",
+    "id": 26,
+    "name": "过敏性皮炎/湿疹",
+    "symptoms": [
+      {
+        "name": "瘙痒",
+        "symptom_id": 185,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "瘙痒是过敏性皮炎/湿疹的主要表现"
+      },
+      {
+        "name": "皮损形态",
+        "symptom_id": 186,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["红斑", "丘疹", "水疱", "苔藓化"],
+        "notes": "皮损形态有助于鉴别诊断"
+      },
+      {
+        "name": "过敏原",
+        "symptom_id": 187,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "花粉", "尘螨", "食物", "其他"],
+        "notes": "过敏原识别有助于预防复发"
+      },
+      {
+        "name": "家族史",
+        "symptom_id": 188,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "有过敏性疾病史"],
+        "notes": "家族史提示遗传倾向"
+      },
+      {
+        "name": "皮肤屏障功能",
+        "symptom_id": 189,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["正常", "受损"],
+        "notes": "皮肤屏障受损易复发"
+      },
+      {
+        "name": "湿度",
+        "symptom_id": 190,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["正常", "干燥", "潮湿"],
+        "notes": "环境湿度影响皮肤症状"
+      }
+    ]
+  },
+  {
+    "system": "F",
+    "system_name": "皮肤/免疫系统",
+    "id": 27,
+    "name": "银屑病",
+    "symptoms": [
+      {
+        "name": "鳞屑红斑",
+        "symptom_id": 191,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "头皮", "肘膝", "泛发"],
+        "notes": "鳞屑红斑是银屑病的主要表现"
+      },
+      {
+        "name": "关节症状有无",
+        "symptom_id": 192,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 3,
+        "options": ["无", "关节肿痛", "指炎"],
+        "notes": "关节症状提示银屑病关节炎"
+      },
+      {
+        "name": "病史",
+        "symptom_id": 193,
+        "type": "现病史",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "反复发作", "家族史"],
+        "notes": "病史有助于评估疾病类型"
+      },
+      {
+        "name": "斑块分布",
+        "symptom_id": 194,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["局限性", "泛发性"],
+        "notes": "斑块分布影响治疗方案"
+      },
+      {
+        "name": "代谢综合征",
+        "symptom_id": 195,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["无", "肥胖", "高血压", "糖尿病"],
+        "notes": "代谢综合征增加银屑病风险"
+      },
+      {
+        "name": "生活习惯",
+        "symptom_id": 196,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["健康", "吸烟", "饮酒", "熬夜"],
+        "notes": "不良生活习惯可加重银屑病"
+      }
+    ]
+  },
+  {
+    "system": "F",
+    "system_name": "皮肤/免疫系统",
+    "id": 28,
+    "name": "荨麻疹",
+    "symptoms": [
+      {
+        "name": "风团",
+        "symptom_id": 197,
+        "type": "主诉采集",
+        "priority": 1,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 4,
+        "options": ["无", "偶发", "反复", "持续性"],
+        "notes": "风团是荨麻疹的主要表现"
+      },
+      {
+        "name": "瘙痒",
+        "symptom_id": 198,
+        "type": "主诉采集",
+        "priority": 2,
+        "required": true,
+        "risk_flag": false,
+        "judgment_weight": 3,
+        "options": ["无", "轻度", "中度", "重度"],
+        "notes": "瘙痒常伴随风团"
+      },
+      {
+        "name": "消退时间",
+        "symptom_id": 199,
+        "type": "主诉采集",
+        "priority": 3,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["<24小时", ">24小时"],
+        "notes": "消退时间有助于区分急慢性荨麻疹"
+      },
+      {
+        "name": "过敏原",
+        "symptom_id": 200,
+        "type": "现病史",
+        "priority": 4,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 2,
+        "options": ["无", "食物", "药物", "环境"],
+        "notes": "过敏原识别有助于预防复发"
+      },
+      {
+        "name": "诱发因素",
+        "symptom_id": 201,
+        "type": "现病史",
+        "priority": 5,
+        "required": false,
+        "risk_flag": false,
+        "judgment_weight": 1,
+        "options": ["无", "冷热刺激", "压力", "感染"],
+        "notes": "诱发因素有助于管理荨麻疹"
+      },
+      {
+        "name": "慢性/急性区分",
+        "symptom_id": 202,
+        "type": "现病史",
+        "priority": 6,
+        "required": false,
+        "risk_flag": true,
+        "judgment_weight": 2,
+        "options": ["急性<6周", "慢性>6周"],
+        "notes": "慢性荨麻疹需排查自身免疫因素"
+      }
+    ]
+  }
+]
