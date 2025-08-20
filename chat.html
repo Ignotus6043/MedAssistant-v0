@@ -68,59 +68,30 @@
 
         // ---------------- Patient history revisit check ----------------
         async function checkRevisit() {
+            // 历史功能暂时关闭：每次进入聊天页时默认清空所有历史与会话上下文
             try {
-                console.log('Checking revisit...');
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    console.log('No token, skipping revisit check');
-                    return { isReturning: false };
+                    localStorage.removeItem('chatHistory');
+                    return { isReturning: false, cleared: true };
                 }
-                
                 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
-                console.log('Fetching history from:', API_BASE + '/api/history');
-                const response = await fetch(API_BASE + '/api/history', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                console.log('History response status:', response.status);
-                if (response.ok) {
-                    const history = await response.json();
-                    console.log('History received:', history);
-                    if (history.length > 0) {
-                        console.log('History found, showing dialog');
-                        // Use modern dialog instead of basic confirm
-                        const isReturning = window.confirm('检测到您之前的就诊记录。您是复诊患者吗？\n\n• 点击"确定"保留就诊历史\n• 点击"取消"清除历史并开始新就诊');
-                        if (!isReturning) {
-                            // Clear both persistent history and session context
-                            await fetch(API_BASE + '/api/history/clear', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-                            
-                            // Also clear current session context
-                            await fetch(API_BASE + '/api/chat/clear', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-                            
-                            // Clear local chat history when starting new session
-                            localStorage.removeItem('chatHistory');
-                            console.log('就诊历史已清除');
-                            return { isReturning: false };
-                        } else {
-                            // Keep everything as-is; do not clear anything
-                            console.log('保留就诊历史，继续当前诊疗流程');
-                            return { isReturning: true };
-                        }
-                    }
-                }
-                // No history found; treat as new session
-                return { isReturning: false };
-            } catch (error) {
-                console.error('历史检查错误:', error);
-                // Fallback to ensure clean start
+                // 清空后端持久历史
+                try {
+                    await fetch(API_BASE + '/api/history/clear', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }});
+                } catch (e) { console.warn('history clear failed', e); }
+                // 清空当前对话上下文
+                try {
+                    await fetch(API_BASE + '/api/chat/clear', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }});
+                } catch (e) { console.warn('chat clear failed', e); }
+                // 清空本地存储历史
                 localStorage.removeItem('chatHistory');
-                return { isReturning: false };
+                console.log('历史功能已关闭：每次登录默认清空');
+                return { isReturning: false, cleared: true };
+            } catch (error) {
+                console.error('历史清空错误:', error);
+                localStorage.removeItem('chatHistory');
+                return { isReturning: false, cleared: false };
             }
         }
 
@@ -316,12 +287,9 @@
             // Dynamic API base URL for local and production
             const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
 
-            // ================= HISTORY CHECK & CONDITIONAL CLEAR =================
-            const revisit = await checkRevisit();
-            // If this was a reload AND user chose to start new, ensure server context is clean (already done in checkRevisit)
-            // If user chose to keep, do not clear anything locally or remotely
-
-            // Focus input after history check completes
+            // ================= ALWAYS CLEAR HISTORY ON LOGIN =================
+            await checkRevisit(); // 统一在此执行清空逻辑（历史功能暂时关闭）
+            // Focus input after清空完成
             document.getElementById('messageInput').focus();
             // ================= END FIX =================
 
