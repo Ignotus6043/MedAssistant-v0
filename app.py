@@ -1,3 +1,4 @@
+import re
 from flask import Flask, request, jsonify, send_from_directory
 import bcrypt
 import jwt
@@ -15,6 +16,117 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Allow all origins for testing
+
+# ----------------- Option parsing helpers -----------------
+
+def _extract_question_block(text: str) -> str:
+    """Return the content that contains the question and options.
+    Looks for a question followed by A/B/C options anywhere in the text.
+    """
+    if not isinstance(text, str) or not text:
+        return ""
+    
+    # Find a question followed by lettered options
+    # Pattern: 
+    # 1. Question line (ends with optional "（可多选）")
+    # 2. Followed by multiple lines starting with A./B./C. etc
+    matches = re.finditer(
+        r'(?:^|\n)([^\n]+?(?:（可多选）)?[\n]'  # Question line
+        r'(?:[A-Z][\.\)．、]\s*[^\n]+[\n]?)+)',  # Option lines
+        text
+    )
+    
+    # Take the last match (most recent question)
+    last_match = None
+    for match in matches:
+        last_match = match
+    
+    return last_match.group(1) if last_match else ""
+
+def _parse_options_from_action(action_block: str) -> tuple[str, dict]:
+    """Parse question and options from an action block.
+    Returns (question_text, { 'A': 'xxx', 'B': 'yyy', ... })
+    """
+    if not action_block:
+        return "", {}
+    lines = [ln.strip() for ln in action_block.splitlines() if ln.strip()]
+    question_parts = []
+    options_map = {}
+    option_re = re.compile(r'^([A-Za-z])[\.\)．、]\s*(.+)$')
+    for ln in lines:
+        m = option_re.match(ln)
+        if m:
+            letter = m.group(1).upper()
+            if letter >= 'A' and letter <= 'Z':
+                options_map[letter] = m.group(2).strip()
+        else:
+            # Collect as question text until options begin
+            if not options_map:
+                question_parts.append(ln)
+    question = ' '.join(question_parts).strip()
+    return question, options_map
+
+def _augment_selection_with_text(user_message: str, last_assistant_text: str) -> str | None:
+    """If the user_message looks like letter selection(s),
+    map them to full option texts from the last assistant '行动' block and
+    return an augmented message. Otherwise return None.
+    Supports inputs like 'C', 'A,B', 'A C', 'ACE', '选C', '选择B、E'.
+    """
+    if not user_message or not last_assistant_text:
+        return None
+    raw = user_message.strip()
+    # Extract letters A-F (or broader A-Z) possibly separated by non-letter symbols
+    letters = re.findall(r'[A-Fa-f]', raw)
+    # Also support patterns like '选C' / '选择C'
+    if not letters:
+        sel = re.findall(r'(?:选|选择)\s*([A-Fa-f](?:[、,\s]+[A-Fa-f])*)', raw)
+        if sel:
+            letters = re.findall(r'[A-Fa-f]', sel[-1])
+    unique_letters = [ch.upper() for ch in letters]
+    if not unique_letters:
+        return None
+    # Do not trigger if the message also contains non-trivial words (to avoid false positives)
+    if len(raw) > 12 and re.search(r'[\u4e00-\u9fa5A-Za-z]{2,}', raw):
+        return None
+    action_block = _extract_question_block(last_assistant_text)
+    question, options_map = _parse_options_from_action(action_block)
+    if not options_map:
+        return None
+    selected_texts = []
+    symptoms_chosen = []
+    symptoms_not_chosen = []
+    
+    # 收集已选和未选症状
+    for opt_letter, opt_text in options_map.items():
+        if opt_letter in unique_letters:
+            if '无上述症状' in opt_text:
+                symptoms_not_chosen.extend([options_map[k] for k in options_map if k != opt_letter and k not in unique_letters])
+            elif '其它' not in opt_text and '其他' not in opt_text:
+                symptoms_chosen.append(opt_text)
+                selected_texts.append(f"{opt_letter}. {opt_text}")
+        elif '其它' not in opt_text and '其他' not in opt_text and '无上述症状' not in opt_text:
+            symptoms_not_chosen.append(opt_text)
+    
+    if not selected_texts:
+        return None
+    
+    status = []
+    if symptoms_chosen:
+        status.append(f"已确认有以下症状：{', '.join(symptoms_chosen)}")
+    if symptoms_not_chosen:
+        status.append(f"已确认没有以下症状：{', '.join(symptoms_not_chosen)}")
+        
+    # 原始选择 + 症状总结
+    status_text = ' '.join(status) if status else ''
+    reminder = "（以上症状和问题已明确确认，无需重复询问）" if status else ""
+      
+    if question:
+        return (
+              f"用户的选择：{'，'.join(selected_texts)}（对应问题：{question}）。\n"
+              f"{status_text}。{reminder}"
+          )
+      
+    return f"用户的选择：{'，'.join(selected_texts)}。\n{status_text}。{reminder}"
 
 @app.after_request
 def after_request(response):
@@ -414,6 +526,12 @@ def chat(current_user):
         conversation_context[user_id] = []  # 存储每轮 {user, assistant}
 
     history = conversation_context[user_id]
+    
+    # 若用户输入为选项字母（A/B/C...），将其映射为完整文本，避免模型误解
+    last_assistant = history[-1]['assistant'] if history else ''
+    augmented = _augment_selection_with_text(message, last_assistant)
+    print(f"哈哈哈哈哈哈哈哈哈Augmented user message: {augmented}")
+    final_user_message = augmented or message
 
     # 生成历史文本
     history_lines = []
@@ -438,7 +556,7 @@ def chat(current_user):
     messages = [
         {"role": "system", "content": get_initial_prompt()},
         {"role": "system", "content": system_history},
-        {"role": "user", "content": message}
+        {"role": "user", "content": final_user_message}
     ]
 
     url = 'https://api.deepseek.com/v1/chat/completions'
@@ -476,7 +594,7 @@ def chat(current_user):
 
         # 保存本轮对话到历史
         conversation_context[user_id].append({
-            'user': message,
+            'user': final_user_message,
             'assistant': ai_response
         })
         
@@ -487,7 +605,7 @@ def chat(current_user):
         # 保存全局聊天记录供 Admin
         chat_record = {
             'userId': user_id,
-            'userMessage': message,
+            'userMessage': final_user_message,
             'assistantMessage': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
@@ -496,7 +614,7 @@ def chat(current_user):
 
         # ----------- 保存就诊历史 -----------
         patient_histories.setdefault(user_id, []).append({
-            'user': message,
+            'user': final_user_message,
             'assistant': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })

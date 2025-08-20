@@ -234,7 +234,7 @@
             const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
             let mainLine = '';
             let mainIndex = -1;
-            let prefixes = ['最终答案:', '最终答案：', '行动:', '行动：'];
+            let prefixes = ['就诊建议:', '就诊建议：', '行动:', '行动：'];
             for (let i = lines.length - 1; i >= 0; i--) {
                 for (const p of prefixes) {
                     if (lines[i].startsWith(p)) {
@@ -254,7 +254,7 @@
             const reasoningLines = lines.slice(0, mainIndex); // everything before main answer
             const mainLines = lines.slice(mainIndex);         // main answer lines (could be multi-line)
             const reasoningText = reasoningLines.join('\n');
-            const mainContentRaw = mainLines.join('\n').replace(/^最终答案[:：]?\s*/,'').replace(/^行动[:：]?\s*/,'').trim();
+            const mainContentRaw = mainLines.join('\n').replace(/^就诊建议[:：]?\s*/,'').replace(/^行动[:：]?\s*/,'').trim();
 
             // Create collapsible reasoning box
             const detailsEl = document.createElement('details');
