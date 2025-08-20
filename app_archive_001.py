@@ -196,44 +196,6 @@ def _parse_response_question_and_options(response_text: str) -> tuple[str, list]
             question = q[:120]
     return question, options
 
-# --- Advanced duplicate detection helpers (additive, non-breaking) ---
-
-def _is_semantically_similar_question(q1: str, q2: str) -> bool:
-    """Normalize and compare two question stems to detect semantic duplicates."""
-    def normalize(q: str) -> str:
-        q = re.sub(r"[？?。!！]$", "", (q or "").strip())
-        q = re.sub(r"\s+", " ", q)
-        for prefix in COMMON_PREFIXES:
-            if q.startswith(prefix):
-                q = q[len(prefix):].strip()
-        return q.lower()
-    return normalize(q1) == normalize(q2)
-
-def _check_question_duplication(new_question: str, history: list, asked_questions: list | None = None) -> bool:
-    """Return True if `new_question` duplicates anything in history or asked_questions."""
-    if not new_question:
-        return False
-    existing_qa = []
-    for h in history:
-        q, opts = _parse_response_question_and_options(h.get('assistant', ''))
-        if q:
-            existing_qa.append({"question": q, "options": opts})
-    if asked_questions:
-        for qa in asked_questions:
-            if isinstance(qa, dict) and 'question' in qa:
-                existing_qa.append({"question": qa['question'], "options": qa.get('options', [])})
-    new_q, new_opts = _parse_response_question_and_options(new_question)
-    if not new_q:
-        return False
-    for qa in existing_qa:
-        if _is_semantically_similar_question(new_q, qa['question']):
-            return True
-        if new_opts and qa.get('options'):
-            common = set(new_opts) & set(qa['options'])
-            if len(common) >= max(1, int(0.7 * min(len(new_opts), len(qa['options'])))):
-                return True
-    return False
-
 # =========================
 # APPLICATION SETUP
 # =========================
@@ -411,24 +373,14 @@ def build_med_db_full_text(db):
 
 # === Checklist helpers (NEW) ===
 
-_CHECKLIST_CACHE = None
-_CHECKLIST_MTIME = None
-
 def load_checklist() -> dict:
-    """Cached load of taxonomy with mtime check; returns {} on failure."""
-    global _CHECKLIST_CACHE, _CHECKLIST_MTIME
-    try:
-        if not os.path.exists(CHECKLIST_FILE):
-            return {}
-        mtime = os.path.getmtime(CHECKLIST_FILE)
-        if _CHECKLIST_CACHE is None or _CHECKLIST_MTIME != mtime:
-            with open(CHECKLIST_FILE, 'r', encoding='utf-8') as f:
-                _CHECKLIST_CACHE = json.load(f)
-            _CHECKLIST_MTIME = mtime
-        return _CHECKLIST_CACHE or {}
-    except Exception as e:
-        print(f"Failed to load checklist: {e}")
+    if not os.path.exists(CHECKLIST_FILE):
         return {}
+    with open(CHECKLIST_FILE, 'r', encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {}
 
 def save_checklist(data: dict):
     with open(CHECKLIST_FILE, 'w', encoding='utf-8') as f:
@@ -629,18 +581,7 @@ def save_users(users):
 users = load_users()
 
 # ============== New user state management ==============
-user_states = defaultdict(lambda: {
-    "current_step": -1,
-    "demographics_known": False,
-    "possible_diseases_paths": [],
-    "age": None,
-    "sex": None,
-    "chief_complaints": [],
-    "collected_answers": {},
-    "red_flags_checked": False,
-    "history": [],
-    "asked_questions": []  # track normalized asked questions to suppress duplicates
-})
+user_states = defaultdict(lambda: {"current_step": -1, "demographics_known": False, "possible_diseases_paths": [], "age": None, "sex": None, "chief_complaints": [], "collected_answers": {}, "red_flags_checked": False, "history": []})
 
 
 def update_demographics_known(user_id: str):
@@ -1471,7 +1412,6 @@ def chat(current_user):
     asked_stems = set()
     for h in hist[-STATE_HISTORY_RETURN_LAST_N:]:
         u = h.get('user', '')
-        raw_u = u
         a = h.get('assistant', '')
         ra = h.get('assistant_ra', '')
         # if previous assistant had options and user replied with a short letter, resolve it
@@ -1491,43 +1431,6 @@ def chat(current_user):
                 u = f"{u} -> 其它"
         # append lines
         history_lines.append(f"用户: {u}")
-        # 记录多选题阳性/阴性（不包含“无/其它”）
-        try:
-            if last_options:
-                # 提取用户选择的多个字母（A-H），支持逗号/空格/中文逗号/连续字母
-                import re as _re
-                keys = set()
-                text = raw_u or ''
-                # 提取形如 A,B C 或 ABC
-                letters = _re.findall(r"[A-Ha-h]", text)
-                if letters:
-                    keys = {ch.upper() for ch in letters if ch.upper() in last_options}
-                # 若未捕获但“->”已解析，补充单选
-                if not keys:
-                    one = _normalize_user_choice(raw_u)
-                    if one:
-                        keys = {one}
-                # 生成阳性/阴性集合
-                if keys:
-                    def _is_none(txt: str) -> bool:
-                        return any(tok in txt for tok in ['无上述', '无症状', '无该'])
-                    def _is_other(txt: str) -> bool:
-                        return ('其它' in txt) or ('其他' in txt)
-                    pos = []
-                    neg = []
-                    for k, opt in last_options.items():
-                        if _is_other(opt) or _is_none(opt):
-                            continue
-                        if k in keys:
-                            pos.append(opt)
-                        else:
-                            neg.append(opt)
-                    if pos or neg:
-                        pos_s = '、'.join(pos) if pos else '无'
-                        neg_s = '、'.join(neg) if neg else '无'
-                        history_lines.append(f"已记录：有（{pos_s}）；无（{neg_s}）")
-        except Exception:
-            pass
         if ra:
             history_lines.append(f"医生R&A: {ra}")
         # 去重：记录已问问题的“语义干净”版，供模型参考避免重复
@@ -1553,26 +1456,9 @@ def chat(current_user):
         demo_text = f"DEMOGRAPHICS\n年龄: {state.get('age')}\n性别: {state.get('sex')}"
         demo_msg = {"role": "system", "content": demo_text}
 
-    # 将 DEMOGRAPHICS（若已知）放在最前，提升优先级，避免模型再次索取年龄性别
-    system_messages = []
-    if demo_msg:
-        system_messages.append(demo_msg)
-    system_messages.append({"role": "system", "content": get_initial_prompt(db_snippet)})
-    # 题型与选项规范（辅助约束）：症状列举类不提供“其它”；描述类必须含“其它”，且在“无”之前
-    option_policy = (
-        "OPTION_POLICY\n"
-        "- ‘你有下列哪些症状？’ 之类的症状清单多选题：不提供“其它”选项；必须提供“无上述症状/无上述现象”，并放在选项末尾。\n"
-        "- 描述/性质/定位等描述式问题：必须包含“其它”选项，且其位置在“无上述现象/无上述症状”之前。\n"
-        "- 当用户选择若干选项时，请在 SUMMARY/answers 中明确记录：有（被选择项）；无（未选择且非“无/其它”的项）。"
-    )
-    system_messages.append({"role": "system", "content": option_policy})
-    # 第7步直接输出建议的约束
-    if state.get('current_step', 0) >= 6:
-        finalize_policy = (
-            "FINALIZE_POLICY\n"
-            "当你决定进入第7步（建议与结论），请在本轮直接给出建议与可能疾病分类/疾病说明，不要提示用户‘请分析/下一步分析’或等待下一轮输入。"
-        )
-        system_messages.append({"role": "system", "content": finalize_policy})
+    system_messages = [
+        {"role": "system", "content": get_initial_prompt(db_snippet)}
+    ]
     # 将覆盖校验清单单独注入，提示模型“必须覆盖全部问点后再推进”；并注入批量询问提示（若有）
     try:
         if coverage_hint:
@@ -1581,7 +1467,8 @@ def chat(current_user):
             system_messages.append({"role": "system", "content": batch_hint})
     except NameError:
         pass
-    # demo_msg 已在最前注入，无需重复追加
+    if demo_msg:
+        system_messages.append(demo_msg)
     # If current step has no DB match, force internet-format fallback for possible_diseases and Response disclaimer
     if no_db_match:
         fallback_text = (
@@ -1600,9 +1487,7 @@ def chat(current_user):
 
     headers = {
         'Authorization': f'Bearer {DEEPSEEK_API_KEY}',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Connection': 'close'
+        'Content-Type': 'application/json'
     }
     payload = {
         'model': DEEPSEEK_MODEL,
@@ -1618,11 +1503,7 @@ def chat(current_user):
 
     try:
         print("Calling DeepSeek API...")
-        try:
-            response = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=DS_TIMEOUT)
-        except requests.exceptions.SSLError:
-            headers['Connection'] = 'close'
-            response = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=DS_TIMEOUT)
+        response = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=DS_TIMEOUT)
         print(f"DeepSeek API Status Code: {response.status_code}")
         print(f"DeepSeek API Response Headers: {dict(response.headers)}")
 
@@ -1746,11 +1627,7 @@ def chat(current_user):
                 'max_tokens': DS_MAX_TOKENS,
                 'top_p': DS_TOP_P
             }
-            try:
-                response2 = requests.post(DEEPSEEK_URL, headers=headers, json=payload_resend, timeout=DS_TIMEOUT)
-            except requests.exceptions.SSLError:
-                headers['Connection'] = 'close'
-                response2 = requests.post(DEEPSEEK_URL, headers=headers, json=payload_resend, timeout=DS_TIMEOUT)
+            response2 = requests.post(DEEPSEEK_URL, headers=headers, json=payload_resend, timeout=DS_TIMEOUT)
             response2.raise_for_status()
             response_data2 = response2.json()
             ai_text2 = response_data2['choices'][0]['message']['content']

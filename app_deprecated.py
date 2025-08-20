@@ -175,6 +175,11 @@ def _extract_question_stems(assistant_text: str) -> list:
         # treat as a question headline
         s = re.sub(r"[？?。!！]$", "", ln)
         s = re.sub(r"\s+", " ", s)
+        # 更严格的问题提取：移除常见前缀词
+        for prefix in COMMON_PREFIXES:
+            if s.startswith(prefix):
+                s = s[len(prefix):].strip()
+                break
         if s and (not stems or s != stems[-1]):
             stems.append(s[:120])
     return stems
@@ -195,44 +200,6 @@ def _parse_response_question_and_options(response_text: str) -> tuple[str, list]
             q = re.sub(r"[？?。!！]$", "", ln.strip())
             question = q[:120]
     return question, options
-
-# --- Advanced duplicate detection helpers (additive, non-breaking) ---
-
-def _is_semantically_similar_question(q1: str, q2: str) -> bool:
-    """Normalize and compare two question stems to detect semantic duplicates."""
-    def normalize(q: str) -> str:
-        q = re.sub(r"[？?。!！]$", "", (q or "").strip())
-        q = re.sub(r"\s+", " ", q)
-        for prefix in COMMON_PREFIXES:
-            if q.startswith(prefix):
-                q = q[len(prefix):].strip()
-        return q.lower()
-    return normalize(q1) == normalize(q2)
-
-def _check_question_duplication(new_question: str, history: list, asked_questions: list | None = None) -> bool:
-    """Return True if `new_question` duplicates anything in history or asked_questions."""
-    if not new_question:
-        return False
-    existing_qa = []
-    for h in history:
-        q, opts = _parse_response_question_and_options(h.get('assistant', ''))
-        if q:
-            existing_qa.append({"question": q, "options": opts})
-    if asked_questions:
-        for qa in asked_questions:
-            if isinstance(qa, dict) and 'question' in qa:
-                existing_qa.append({"question": qa['question'], "options": qa.get('options', [])})
-    new_q, new_opts = _parse_response_question_and_options(new_question)
-    if not new_q:
-        return False
-    for qa in existing_qa:
-        if _is_semantically_similar_question(new_q, qa['question']):
-            return True
-        if new_opts and qa.get('options'):
-            common = set(new_opts) & set(qa['options'])
-            if len(common) >= max(1, int(0.7 * min(len(new_opts), len(qa['options'])))):
-                return True
-    return False
 
 # =========================
 # APPLICATION SETUP
@@ -258,10 +225,11 @@ def after_request(response):
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', 'YOUR_DEEPSEEK_API_KEY')
 
-# In-memory trackers
-conversation_context = {}  # {username: [history]}
+# File paths
+USERS_FILE = 'users.json'
 
 # ----------------- Admin credentials -----------------
+ADMIN_CRED_FILE = 'admin_credentials.txt'
 
 def load_admin_credentials():
     if os.path.exists(ADMIN_CRED_FILE):
@@ -276,7 +244,11 @@ def load_admin_credentials():
 
 ADMIN_EMAIL, ADMIN_PW_HASH = load_admin_credentials()
 
+# In-memory trackers
+conversation_context = {}  # {username: [history]}
+
 # Persistent chat history -----------------
+CHAT_HISTORY_FILE = 'chat_history.json'
 
 def load_chat_records():
     if os.path.exists(CHAT_HISTORY_FILE):
@@ -294,6 +266,7 @@ def save_chat_records():
 chat_records = load_chat_records()  # list of message dicts
 
 # ----------------- Patient history -----------------
+PATIENT_HISTORY_FILE = 'patient_history.json'
 
 def load_patient_histories():
     if os.path.exists(PATIENT_HISTORY_FILE):
@@ -312,7 +285,81 @@ patient_histories = load_patient_histories()  # {username: [ {user, assistant, t
 
 online_users = {}          # {username: last_seen_datetime}
 
-# ----------------- Medical DB helpers -----------------
+Med_DB_FILE_UNUSED = None  # legacy placeholder to avoid accidental reuse
+
+# ----------------- Medical DB & Taxonomy helpers -----------------
+
+# Cache for taxonomy file
+_CHECKLIST_CACHE = None
+_CHECKLIST_MTIME = None
+
+def load_checklist() -> dict:
+    """Load and cache `disease_taxonomy_v2.json`. Returns {} on failure."""
+    global _CHECKLIST_CACHE, _CHECKLIST_MTIME
+    try:
+        if not os.path.exists(CHECKLIST_FILE):
+            return {}
+        mtime = os.path.getmtime(CHECKLIST_FILE)
+        if _CHECKLIST_CACHE is None or _CHECKLIST_MTIME != mtime:
+            with open(CHECKLIST_FILE, 'r', encoding='utf-8') as f:
+                _CHECKLIST_CACHE = json.load(f)
+            _CHECKLIST_MTIME = mtime
+        return _CHECKLIST_CACHE or {}
+    except Exception as e:
+        print(f"Failed to load checklist: {e}")
+        return {}
+
+# === NEW: Question duplication check ===
+
+def _is_semantically_similar_question(q1: str, q2: str) -> bool:
+    """检查两个问题是否语义相似。
+    移除常见前缀词和标点符号后进行比较。
+    """
+    def normalize(q: str) -> str:
+        q = re.sub(r"[？?。!！]$", "", q.strip())
+        q = re.sub(r"\s+", " ", q)
+        for prefix in COMMON_PREFIXES:
+            if q.startswith(prefix):
+                q = q[len(prefix):].strip()
+        return q.lower()
+    
+    return normalize(q1) == normalize(q2)
+
+def _check_question_duplication(new_question: str, history: list, asked_questions: list = None) -> tuple[bool, list]:
+    """检查新问题是否与历史问题重复。
+    返回 (is_duplicate, existing_questions)
+    """
+    if not new_question:
+        return False, []
+    
+    # 首先从历史记录中收集问题和选项
+    existing_qa = []
+    if history:
+        for h in history:
+            question, options = _parse_response_question_and_options(h.get('assistant', ''))
+            if question:
+                existing_qa.append({"question": question, "options": options})
+    
+    # 如果提供了已问问题集合，添加到现有问题中
+    if asked_questions:
+        existing_qa.extend(asked_questions)
+        print(f"Current asked_questions: {asked_questions}")
+    
+    # 使用更准确的问题解析
+    new_question_stem, new_options = _parse_response_question_and_options(new_question)
+    if new_question_stem:
+        for qa in existing_qa:
+            # 检查问题是否语义相似
+            if _is_semantically_similar_question(new_question_stem, qa["question"]):
+                return True, existing_qa
+            # 检查选项是否相似
+            if new_options and qa["options"]:
+                # 计算选项的重叠度
+                common_options = set(new_options) & set(qa["options"])
+                if len(common_options) >= min(len(new_options), len(qa["options"])) * 0.7:  # 如果70%以上的选项重叠
+                    return True, existing_qa
+    
+    return False, existing_qa
 
 # === NEW: auto-derive chief complaints ===
 
@@ -371,7 +418,7 @@ def build_med_db_overview_text(db):
                 lines.append(f"{item['id']}. {item['name']}")
     return "\n".join(lines)
 
-# Keep old detailed builder for disease_detail endpoint
+# Keep old detailed builder but rename
 
 def build_med_db_full_text(db):
     """Full detailed text (keeps existing build_med_db_text logic)."""
@@ -409,237 +456,35 @@ def build_med_db_full_text(db):
                     lines.append(f"- {s['name']}（{s['type']}，优先级{s['priority']}）可选: {opts}")
     return "\n".join(lines)
 
-# === Checklist helpers (NEW) ===
+# (Old get_initial_prompt removed; unified version defined later.)
 
-_CHECKLIST_CACHE = None
-_CHECKLIST_MTIME = None
-
-def load_checklist() -> dict:
-    """Cached load of taxonomy with mtime check; returns {} on failure."""
-    global _CHECKLIST_CACHE, _CHECKLIST_MTIME
-    try:
-        if not os.path.exists(CHECKLIST_FILE):
-            return {}
-        mtime = os.path.getmtime(CHECKLIST_FILE)
-        if _CHECKLIST_CACHE is None or _CHECKLIST_MTIME != mtime:
-            with open(CHECKLIST_FILE, 'r', encoding='utf-8') as f:
-                _CHECKLIST_CACHE = json.load(f)
-            _CHECKLIST_MTIME = mtime
-        return _CHECKLIST_CACHE or {}
-    except Exception as e:
-        print(f"Failed to load checklist: {e}")
-        return {}
-
-def save_checklist(data: dict):
-    with open(CHECKLIST_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-# Map chief complaints from medical_db.json into checklist if names match (best-effort)
-
-def _normalize_name(name: str) -> str:
-    if not isinstance(name, str):
-        return ''
-    n = name
-    n = n.replace('_', '').replace('-', '').replace(' ', '')
-    n = n.replace('/', '').replace('、', '')
-    return n
-
-
-def enrich_checklist_from_med_db(checklist: dict, med_db: dict) -> dict:
-    if not med_db or not isinstance(med_db, dict):
-        return checklist
-    diseases = med_db.get('diseases', [])
-    # Build map by normalized name
-    name_to_cc = {}
-    for d in diseases:
-        cc = d.get('chief_complaints')
-        if isinstance(cc, str):
-            cc = [c.strip() for c in cc.split('、') if c.strip()]
-        if not isinstance(cc, list):
-            continue
-        name_to_cc[_normalize_name(d.get('name', ''))] = cc
-    if not name_to_cc:
-        return checklist
-
-    def traverse(node: dict):
-        if not isinstance(node, dict):
-            return
-        # Try match this node if it looks like a leaf disease entry (has '问诊' or no dict children)
-        child_dicts = [(k, v) for k, v in node.items() if isinstance(v, dict)]
-        for k, v in child_dicts:
-            # Attempt enrich child
-            if isinstance(v, dict):
-                # leaf?
-                grand = [(kk, vv) for kk, vv in v.items() if isinstance(vv, dict)]
-                if '问诊' in v or not grand:
-                    parsed = parse_disease_key(k)
-                    disease_display_name = parsed['name'] if parsed['name'] else k
-                    norm = _normalize_name(disease_display_name)
-                    cc_from_db = name_to_cc.get(norm)
-                    if cc_from_db and (("主诉" not in v) or not v.get('主诉')):
-                        v['主诉'] = cc_from_db[:CATEGORY_CC_MAX]
-                # Recurse
-                traverse(v)
-    for topk, topv in checklist.items():
-        if topk in ('描述', '主诉', '_schema_note'):
-            continue
-        traverse(topv)
-    return checklist
-
-
-def _clean_question_to_keywords(q: str) -> list:
-    if not isinstance(q, str):
-        return []
-    q = q.strip()
-    q = re.sub(r"[？?。!！]", "", q)
-    q = re.sub(r"（.*?）", "", q)
-    for p in COMMON_PREFIXES:
-        if q.startswith(p):
-            q = q[len(p):]
-            break
-    q = q.replace("（", "").replace("）", "")
-    parts = re.split(SPLIT_DELIMS, q)
-    parts = [p.strip() for p in parts if 1 < len(p.strip()) <= 8]
-    # Deduplicate while keeping order
-    seen = set()
-    res = []
-    for p in parts:
-        if p not in seen:
-            seen.add(p)
-            res.append(p)
-    return res[:KEYPOINTS_TOPK + 2]
-
-
-def ensure_checklist_has_chief_complaints(db: dict) -> dict:
-    """Ensure each big category and leaf disease has a '主诉' list; derive from '问诊' if missing."""
-    def process_node(node):
-        if isinstance(node, dict):
-            # If node has '问诊', derive 主诉 if missing
-            if '问诊' in node:
-                if '主诉' not in node or not isinstance(node['主诉'], list):
-                    # derive keywords from first several questions
-                    questions = node.get('问诊', [])[:8]
-                    keywords = []
-                    for q in questions:
-                        keywords.extend(_clean_question_to_keywords(q))
-                    # cap and unique
-                    seen = set()
-                    cc = []
-                    for k in keywords:
-                        if k not in seen:
-                            seen.add(k)
-                            cc.append(k)
-                    node['主诉'] = cc[:CATEGORY_CC_MAX]
-            # Recursively process children and build category-level 主诉 as union of children
-            child_keys = [k for k in node.keys() if isinstance(node[k], dict)]
-            aggregate = []
-            for ck in child_keys:
-                process_node(node[ck])
-                child_cc = node[ck].get('主诉', []) if isinstance(node[ck], dict) else []
-                aggregate.extend(child_cc)
-            if child_keys:
-                # set category 主诉 if not present
-                if '主诉' not in node or not isinstance(node['主诉'], list) or not node['主诉']:
-                    cnt = Counter(aggregate)
-                    node['主诉'] = [w for w, _ in cnt.most_common(CATEGORY_CC_MAX + 2)][:CATEGORY_CC_MAX]
-        return node
-
-    return process_node(db)
-
-
-def build_checklist_snippet_for_step(db: dict, user_state: dict) -> str:
-    """Legacy snippet builder (kept for compatibility, not used for Top-K segmentation)."""
-    step = user_state.get('current_step', -1)
-    demographics_known = user_state.get('demographics_known', False)
-    if not demographics_known or step <= 0:
-        return ""
-
-    candidate_paths = user_state.get('possible_diseases_paths', [])
-
-    lines = []
-    def path_to_str(path_list):
-        return "/".join(path_list)
-
-    def add_category(name, node, path):
-        cc = node.get('主诉', []) if isinstance(node, dict) else []
-        if cc:
-            lines.append(f"{path_to_str(path+[name])} | 主诉: {'、'.join(cc[:CATEGORY_CC_MAX])}")
-        else:
-            lines.append(f"{path_to_str(path+[name])}")
-
-    def add_disease(name, node, path):
-        cc = node.get('主诉', [])
-        if cc:
-            lines.append(f"- {path_to_str(path+[name])} | 主诉: {'、'.join(cc[:CATEGORY_CC_MAX])}")
-        else:
-            lines.append(f"- {path_to_str(path+[name])}")
-        if step >= 4 and '问诊' in node:
-            qk = [", ".join(_clean_question_to_keywords(q)) for q in node.get('问诊', [])[:6]]
-            qk = [s for s in qk if s]
-            if qk:
-                lines.append(f"  · 关键问点: {'；'.join(qk[:KEYPOINTS_TOPK])}")
-
-    def traverse(node, path):
-        if step == 1:
-            for k, v in node.items():
-                if k in ("描述", "主诉"):
-                    continue
-                if isinstance(v, dict):
-                    add_category(k, v, path)
-        else:
-            for k, v in node.items():
-                if k in ("描述", "主诉"):
-                    continue
-                if isinstance(v, dict):
-                    current_path = path + [k]
-                    is_candidate_branch = any(cp.startswith("/"+"/".join(current_path)+"/") or cp.startswith("/"+"/".join(current_path)) for cp in candidate_paths)
-                    if step in (2,3) and not is_candidate_branch and candidate_paths:
-                        return
-                    has_child_dict = any(isinstance(v2, dict) for v2 in v.values())
-                    if has_child_dict:
-                        add_category(k, v, path)
-                        traverse(v, current_path)
-                    else:
-                        add_disease(k, v, path)
-
-    traverse(db, [])
-    out = []
-    total = 0
-    for l in lines:
-        if total + len(l) + 1 > CHAR_BUDGET:
-            break
-        out.append(l)
-        total += len(l) + 1
-    return "\n".join(out)
-
-# =========================
-# USERS & AUTH HELPERS
-# =========================
-
+# Load users from file
 def load_users():
     if os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'r') as f:
             return json.load(f)
     return {}
 
+# Save users to file
 def save_users(users):
     with open(USERS_FILE, 'w') as f:
         json.dump(users, f, indent=4)
 
+# Initialize users
 users = load_users()
 
 # ============== New user state management ==============
 user_states = defaultdict(lambda: {
-    "current_step": -1,
-    "demographics_known": False,
-    "possible_diseases_paths": [],
-    "age": None,
-    "sex": None,
-    "chief_complaints": [],
-    "collected_answers": {},
-    "red_flags_checked": False,
+    "current_step": -1, 
+    "demographics_known": False, 
+    "possible_diseases_paths": [], 
+    "age": None, 
+    "sex": None, 
+    "chief_complaints": [], 
+    "collected_answers": {}, 
+    "red_flags_checked": False, 
     "history": [],
-    "asked_questions": []  # track normalized asked questions to suppress duplicates
+    "asked_questions": []  # 新增：用于跟踪所有已问过的问题，每个元素是 {question: str, options: list}
 })
 
 
@@ -1194,21 +1039,25 @@ def get_initial_prompt(db_text: str = ""):
 # =========================
 
 def generate_token(username: str, is_admin: bool = False):
+    """Generate a JWT token valid for 7 days."""
     return jwt.encode({
         'username': username,
         'is_admin': is_admin,
         'exp': datetime.utcnow() + timedelta(days=7)
     }, SECRET_KEY, algorithm='HS256')
 
-
 def token_required(f):
+    """Decorator to ensure the request carries a valid JWT token."""
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Allow OPTIONS pre-flight requests without token
         if request.method == 'OPTIONS':
             return f(None, *args, **kwargs)
+
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
             return jsonify({'message': 'Token is missing'}), 401
+
         token = auth_header.split(' ')[1]
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
@@ -1222,7 +1071,6 @@ def token_required(f):
             return jsonify({'message': 'Token is invalid'}), 401
         return f(current_user, *args, **kwargs)
     return decorated
-
 
 def admin_required(f):
     @wraps(f)
@@ -1240,16 +1088,32 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# =========================
-# ROUTES
-# =========================
+# ----------------- Simple rate limiting -----------------
+RATE_LIMIT_WINDOW_SEC = 12 * 60 * 60  # 12 hours
+RATE_LIMIT_MAX = 100
+ip_rate_table = {}  # {ip: {'start': epoch, 'count': int}}
+
+def check_rate_limit(ip: str):
+    """Return True if within limit, False if exceeded."""
+    now = time.time()
+    rec = ip_rate_table.get(ip)
+    if not rec or now - rec['start'] > RATE_LIMIT_WINDOW_SEC:
+        # New window
+        ip_rate_table[ip] = {'start': now, 'count': 1}
+        return True
+    if rec['count'] >= RATE_LIMIT_MAX:
+        return False
+    rec['count'] += 1
+    return True
 
 @app.route('/')
 def index():
+    # Serve login.html by default; chat.html is loaded after successful login from frontend
     return send_from_directory('.', 'login.html')
 
 @app.route('/<path:filename>')
 def static_files(filename):
+    # Serve other static files (like styles.css) from the current directory
     return send_from_directory('.', filename)
 
 @app.route('/api/register', methods=['POST'])
@@ -1265,6 +1129,7 @@ def register():
     if username in users:
         return jsonify({"success": False, "message": "Username already exists"}), 400
 
+    # Hash the password for secure storage
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     users[username] = {
@@ -1274,6 +1139,7 @@ def register():
     }
 
     save_users(users)
+    # Mark user online immediately after registration
     online_users[username] = datetime.utcnow()
 
     token = generate_token(username)
@@ -1302,6 +1168,7 @@ def login():
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
     token = generate_token(username)
+    # Mark user online on login
     online_users[username] = datetime.utcnow()
 
     return jsonify({
@@ -1317,6 +1184,7 @@ def admin_login():
     email = data.get('email')
     password = data.get('password')
     
+    # Use stored hash comparison
     if email == ADMIN_EMAIL and ADMIN_PW_HASH and bcrypt.checkpw(password.encode('utf-8'), ADMIN_PW_HASH.encode('utf-8')):
         token = generate_token("admin", is_admin=True)
         return jsonify({"success": True, "message": "Login successful", "token": token})
@@ -1325,13 +1193,16 @@ def admin_login():
 
 @app.route('/api/chat', methods=['OPTIONS'])
 def chat_preflight():
+    """Handle CORS pre-flight requests without auth."""
     return '', 200
 
 @app.route('/api/chat', methods=['POST'])
 @token_required
 def chat(current_user):
+    # Use authenticated username as the conversation id
     user_id = current_user['username']
 
+    # Mark user as online / update last_seen
     online_users[user_id] = datetime.utcnow()
 
     print(f"Received {request.method} request to /api/chat")
@@ -1341,6 +1212,7 @@ def chat(current_user):
         print("Handling OPTIONS preflight request")
         return '', 200
 
+    # ---- Rate limiting per IP ----
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     if not check_rate_limit(client_ip):
         return jsonify({'response': 'Rate limit reached, try again later.'}), 429
@@ -1354,11 +1226,17 @@ def chat(current_user):
     if len(message) > 500:
         return jsonify({'error': 'Message exceeds 500 character limit'}), 400
 
+    # ---------- 构建对话上下文（记忆） ----------
     if user_id not in conversation_context:
-        conversation_context[user_id] = []
+        conversation_context[user_id] = []  # 存储每轮 {user, assistant}
 
     history = conversation_context[user_id]
 
+    # 生成历史文本
+    history_lines = []
+    for h in history:
+        history_lines.append(f"用户: {h['user']}")
+        history_lines.append(f"助手: {h['assistant']}")
     checklist = load_checklist()
     if not checklist:
         print("Warning: medical_checklist.json not found or empty")
@@ -1380,6 +1258,7 @@ def chat(current_user):
         groups = select_group_keys(state.get('age'), state.get('sex'))
         cur_step = max(0, state.get('current_step', 0))
         filtered = filter_db_by_groups(checklist, groups, step=cur_step)
+        print(f"Filtered: {filtered}")
         # Strict mode behavior by step
         if cur_step == 0:
             # Step 0：在用户第一句之前，直接注入 I 与年龄/性别分组下"所有系统级条目"的概览
@@ -1395,6 +1274,7 @@ def chat(current_user):
         elif cur_step == 1:
             # Step 1：展示所选分组下“全部系统级”条目（不做 Top-K），由模型自行判断归类
             db_snippet = build_systems_overview_snippet(filtered)
+            print(f"DB Snippet: {db_snippet}")
             injection_mode = "systems_overview_all"
             print("\n=== Checklist Injection ===")
             print(f"Mode: {injection_mode} | Step: {cur_step} (chief complaints)")
@@ -1462,6 +1342,28 @@ def chat(current_user):
     else:
         print("[Checklist Preview] (empty)")
 
+    # 在构建历史记录前，先获取当前步骤所有可能的问题
+    def get_current_step_questions(step: int, must_ask_items: list) -> list:
+        """获取当前步骤可能问的问题列表"""
+        if not must_ask_items:
+            return []
+        questions = []
+        for item in must_ask_items:
+            # 构造标准格式的问题
+            q = f"请问您{item}？"
+            questions.append(q)
+        return questions
+
+    # 预检查问题是否会重复
+    def pre_check_questions(questions: list, history: list, asked_questions: set) -> list:
+        """预检查问题列表，返回未重复的问题"""
+        valid_questions = []
+        for q in questions:
+            is_duplicate, _ = _check_question_duplication(q, history, asked_questions)
+            if not is_duplicate:
+                valid_questions.append(q)
+        return valid_questions
+
     # Build HISTORY with resolved choices so LLM sees structured user answers
     hist = conversation_context.get(user_id, [])
     history_lines = []
@@ -1471,7 +1373,6 @@ def chat(current_user):
     asked_stems = set()
     for h in hist[-STATE_HISTORY_RETURN_LAST_N:]:
         u = h.get('user', '')
-        raw_u = u
         a = h.get('assistant', '')
         ra = h.get('assistant_ra', '')
         # if previous assistant had options and user replied with a short letter, resolve it
@@ -1491,43 +1392,6 @@ def chat(current_user):
                 u = f"{u} -> 其它"
         # append lines
         history_lines.append(f"用户: {u}")
-        # 记录多选题阳性/阴性（不包含“无/其它”）
-        try:
-            if last_options:
-                # 提取用户选择的多个字母（A-H），支持逗号/空格/中文逗号/连续字母
-                import re as _re
-                keys = set()
-                text = raw_u or ''
-                # 提取形如 A,B C 或 ABC
-                letters = _re.findall(r"[A-Ha-h]", text)
-                if letters:
-                    keys = {ch.upper() for ch in letters if ch.upper() in last_options}
-                # 若未捕获但“->”已解析，补充单选
-                if not keys:
-                    one = _normalize_user_choice(raw_u)
-                    if one:
-                        keys = {one}
-                # 生成阳性/阴性集合
-                if keys:
-                    def _is_none(txt: str) -> bool:
-                        return any(tok in txt for tok in ['无上述', '无症状', '无该'])
-                    def _is_other(txt: str) -> bool:
-                        return ('其它' in txt) or ('其他' in txt)
-                    pos = []
-                    neg = []
-                    for k, opt in last_options.items():
-                        if _is_other(opt) or _is_none(opt):
-                            continue
-                        if k in keys:
-                            pos.append(opt)
-                        else:
-                            neg.append(opt)
-                    if pos or neg:
-                        pos_s = '、'.join(pos) if pos else '无'
-                        neg_s = '、'.join(neg) if neg else '无'
-                        history_lines.append(f"已记录：有（{pos_s}）；无（{neg_s}）")
-        except Exception:
-            pass
         if ra:
             history_lines.append(f"医生R&A: {ra}")
         # 去重：记录已问问题的“语义干净”版，供模型参考避免重复
@@ -1540,48 +1404,94 @@ def chat(current_user):
         last_assistant_text = a
         last_options = _parse_option_mapping(a)
 
-    # 在 HISTORY 末尾补充已问清单，强提示模型禁止重复
-    if asked_stems:
-        history_lines.append("\n已问清单(禁止重复):")
-        for s in list(asked_stems)[:30]:
-            history_lines.append(f"- {s}")
     history_text = "\n".join(history_lines)
+    concise_rule = "医生口吻，回复≤60字；信息不足时仅问一个新的关键问题(单句，无序号无客套)，禁止总结解释；收集完必要信息后再给出诊断与用药建议，当收集信息有矛盾时，向用户确认或者考虑可能性。"
 
-    # Inject demographics hint and step policy
-    demo_msg = None
-    if state.get('demographics_known') and state.get('age') is not None and state.get('sex') in ('男', '女'):
-        demo_text = f"DEMOGRAPHICS\n年龄: {state.get('age')}\n性别: {state.get('sex')}"
-        demo_msg = {"role": "system", "content": demo_text}
+    # 注入跨会话就诊历史
+    pat_hist = patient_histories.get(user_id, [])
+    pat_lines = []
+    for itm in pat_hist:
+        pat_lines.append(f"患者: {itm['user']}")
+        pat_lines.append(f"医生: {itm['assistant']}")
+    pat_text = "\n".join(pat_lines) if pat_lines else '无'
 
-    # 将 DEMOGRAPHICS（若已知）放在最前，提升优先级，避免模型再次索取年龄性别
-    system_messages = []
-    if demo_msg:
-        system_messages.append(demo_msg)
-    system_messages.append({"role": "system", "content": get_initial_prompt(db_snippet)})
-    # 题型与选项规范（辅助约束）：症状列举类不提供“其它”；描述类必须含“其它”，且在“无”之前
-    option_policy = (
-        "OPTION_POLICY\n"
-        "- ‘你有下列哪些症状？’ 之类的症状清单多选题：不提供“其它”选项；必须提供“无上述症状/无上述现象”，并放在选项末尾。\n"
-        "- 描述/性质/定位等描述式问题：必须包含“其它”选项，且其位置在“无上述现象/无上述症状”之前。\n"
-        "- 当用户选择若干选项时，请在 SUMMARY/answers 中明确记录：有（被选择项）；无（未选择且非“无/其它”的项）。"
+    patient_block = f"该用户此前的就诊历史：{pat_text}"
+    # 构建基础系统消息
+    system_messages = [
+        {"role": "system", "content": get_initial_prompt(db_snippet)}
+    ]
+    interaction_policy = (
+        "INTERACTION_POLICY\n"
+        "当用户回复不是严格的选项/步骤答案时，请按以下规则处理：\n"
+        "1) 若用户是在澄清/询问选项含义：先用≤40字解释清楚，再将同一题原样重发一次（不视为重复）。\n"
+        "2) 若是与当前疾病相关的补充描述：将关键信息纳入 SUMMARY，然后继续本步尚未覆盖的问点。\n"
+        "3) 一般医疗/健康咨询：先简要回答（≤60字），随后继续本步关键提问（≤1题）。\n"
+        "4) 紧急/红旗：立即停止其它提问，在 Response 中明确‘请立即拨打120/就医’。\n"
+        "5) 无关话题：礼貌说明仅回答医疗相关问题，并继续本步关键提问。\n"
     )
-    system_messages.append({"role": "system", "content": option_policy})
-    # 第7步直接输出建议的约束
-    if state.get('current_step', 0) >= 6:
-        finalize_policy = (
-            "FINALIZE_POLICY\n"
-            "当你决定进入第7步（建议与结论），请在本轮直接给出建议与可能疾病分类/疾病说明，不要提示用户‘请分析/下一步分析’或等待下一轮输入。"
-        )
-        system_messages.append({"role": "system", "content": finalize_policy})
-    # 将覆盖校验清单单独注入，提示模型“必须覆盖全部问点后再推进”；并注入批量询问提示（若有）
-    try:
-        if coverage_hint:
-            system_messages.append({"role": "system", "content": coverage_hint})
-        if 'batch_hint' in locals() and batch_hint:
-            system_messages.append({"role": "system", "content": batch_hint})
-    except NameError:
-        pass
-    # demo_msg 已在最前注入，无需重复追加
+    system_messages.append({"role": "system", "content": interaction_policy})
+    
+    def get_sorted_questions():
+        """获取排序后的问题列表"""
+        all_asked_qa = []
+        # 从历史记录中收集问题和选项
+        for h in hist[-STATE_HISTORY_RETURN_LAST_N:]:
+            question, options = _parse_response_question_and_options(h.get('assistant', ''))
+            if question and isinstance(options, list):  # 确保 options 是列表
+                all_asked_qa.append({"question": question, "options": options})
+        
+        # 添加用户状态中存储的问题
+        if user_id in user_states:
+            stored_questions = user_states[user_id].get('asked_questions', [])
+            for qa in stored_questions:
+                if isinstance(qa, dict) and 'question' in qa and 'options' in qa and isinstance(qa['options'], list):
+                    all_asked_qa.append(qa)
+        
+        # 对问题进行排序和去重
+        unique_questions = {}
+        for qa in all_asked_qa:
+            if qa['question'] not in unique_questions:
+                unique_questions[qa['question']] = qa
+        
+        return sorted(unique_questions.values(), key=lambda x: x['question'])
+
+    # 获取排序后的问题列表
+    sorted_qa = get_sorted_questions()
+    print(f"Sorted questions: {[qa['question'] for qa in sorted_qa]}")
+    
+    if sorted_qa:
+        forbidden_msg = [
+            "FORBIDDEN_QUESTIONS - 禁止问题列表",
+            "以下是已经问过的问题，严禁再次提问或生成任何语义相似的变体：",
+            *[f"{i+1}. 问题：{qa['question']}\n   选项：{' | '.join(qa['options'])}" for i, qa in enumerate(sorted_qa)],
+            "",
+            "===== 强制性规则 =====",
+            "1. 在生成任何新问题之前，必须检查上述列表",
+            "2. 严禁生成与列表中任何问题语义相似的问题",
+            "3. 禁止通过改写、同义替换等方式复述列表中的问题",
+            "4. 新问题必须与列表中所有问题在语义上有明显区别",
+            "5. 如果找不到新的未问过的问题，必须直接进入下一步",
+            "6. 这些规则的优先级高于其他所有指令",
+            "",
+            "===== 警告 =====",
+            "违反上述规则将导致：",
+            "1. 系统立即拒绝该问题",
+            "2. 强制结束当前步骤",
+            "3. 可能直接进入下一步",
+            "",
+            "请在生成每个新问题之前仔细检查此列表。"
+        ]
+        system_messages.append({
+            "role": "system",
+            "content": "\n".join(forbidden_msg)
+        })
+    # 将覆盖校验清单单独注入，提示模型"必须覆盖全部问点后再推进"；并注入批量询问提示（若有）
+    coverage_hint = locals().get('coverage_hint', '')
+    batch_hint = locals().get('batch_hint', '')
+    if coverage_hint:
+        system_messages.append({"role": "system", "content": coverage_hint})
+    if batch_hint:
+        system_messages.append({"role": "system", "content": batch_hint})
     # If current step has no DB match, force internet-format fallback for possible_diseases and Response disclaimer
     if no_db_match:
         fallback_text = (
@@ -1593,11 +1503,11 @@ def chat(current_user):
     system_messages.append({"role": "system", "content": "HISTORY\n" + history_text})
     print(f"[Prompt Build] injected_snippet_chars={len(db_snippet)} history_chars={len(history_text)}")
 
-    messages = system_messages + [
-        {"role": "user", "content": message}
-    ]
-    print("\n===== HISTORY (Resolved) =====\n" + history_text)
+    system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}"
 
+    messages = system_messages + [{"role": "user", "content": message}]
+
+    url = 'https://api.deepseek.com/v1/chat/completions'
     headers = {
         'Authorization': f'Bearer {DEEPSEEK_API_KEY}',
         'Content-Type': 'application/json',
@@ -1605,24 +1515,27 @@ def chat(current_user):
         'Connection': 'close'
     }
     payload = {
-        'model': DEEPSEEK_MODEL,
+        'model': 'deepseek-chat',
         'messages': messages,
-        'temperature': DS_TEMPERATURE,
-        'max_tokens': DS_MAX_TOKENS,
-        'top_p': DS_TOP_P
+        'temperature': 0.5,
+        'max_tokens': 200,
+        'top_p': 0.9
     }
 
+    # 调试打印
+    import json as _j
     print("===== Payload 发往 DeepSeek =====")
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    print(_j.dumps(payload, ensure_ascii=False, indent=2))
     print("===== End Payload =====")
 
     try:
         print("Calling DeepSeek API...")
         try:
-            response = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=DS_TIMEOUT)
+            response = requests.post(url, headers=headers, json=payload, timeout=180)
         except requests.exceptions.SSLError:
+            # 简单重试一次，强制断开长连接
             headers['Connection'] = 'close'
-            response = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=DS_TIMEOUT)
+            response = requests.post(url, headers=headers, json=payload, timeout=180)
         print(f"DeepSeek API Status Code: {response.status_code}")
         print(f"DeepSeek API Response Headers: {dict(response.headers)}")
 
@@ -1631,12 +1544,21 @@ def chat(current_user):
         response_data = response.json()
         print(f"DeepSeek API Response: {response_data}")
 
-        ai_text = response_data['choices'][0]['message']['content']
+        ai_response = response_data['choices'][0]['message']['content']
         print("DeepSeek responded successfully")
 
-        parsed = parse_llm_json(ai_text)
+        # 保存本轮对话到历史
+        conversation_context[user_id].append({
+            'user': message,
+            'assistant': ai_response
+        })
+        
+        # 如历史过长，可截断至最近20轮
+        if len(conversation_context[user_id]) > 40:
+            conversation_context[user_id] = conversation_context[user_id][-40:]
+        parsed = parse_llm_json(ai_response)
         ra = parsed.get('Reasoning & Action') or parsed.get('reasoning_action') or ""
-        resp = parsed.get('Response') or parsed.get('response') or ai_text
+        resp = parsed.get('Response') or parsed.get('response') or ai_response
         step = parsed.get('step')
         try:
             step = int(step)
@@ -1707,14 +1629,109 @@ def chat(current_user):
         if isinstance(possible_diseases, list):
             user_states[user_id]['last_possible_ids'] = possible_diseases
 
-        # 自查重复：若本轮问题（stem）已出现在已问清单中，则打回改写（避免重复/过度提问）
+        # 增强的重复检查：使用语义相似度比较，包括持久化的问题历史
         stem_new, opts_new = _parse_response_question_and_options(resp)
-        prev_stems = set()
-        for h in history[-STATE_HISTORY_RETURN_LAST_N:]:
-            s = _extract_question_stem(h.get('assistant', ''))
-            if s:
-                prev_stems.add(s)
-        is_duplicate_question = bool(stem_new) and (stem_new in prev_stems)
+        sorted_qa = get_sorted_questions()  # 重用之前的函数
+        print(f"Checking against {len(sorted_qa)} stored questions: {[qa['question'] for qa in sorted_qa]}")
+        
+        # 检查新问题是否与任何已存在的问题重复
+        is_duplicate_question = False
+        if stem_new:
+            for qa in sorted_qa:
+                is_text_similar = _is_semantically_similar_question(stem_new, qa['question'])
+                is_options_similar = False
+                if opts_new and qa['options']:
+                    common_options = set(opts_new) & set(qa['options'])
+                    is_options_similar = len(common_options) >= min(len(opts_new), len(qa['options'])) * 0.7
+                
+                if is_text_similar or is_options_similar:
+                    is_duplicate_question = True
+                    break
+        # 允许澄清请求时对同一题目重发一次（不视为重复）
+        if is_duplicate_question:
+            clar_pat = r"(不理解|什么意思|解释|含义|哪.?选项|选项[ABCDEFH])"
+            if re.search(clar_pat, message or ""):
+                last_stem = _extract_question_stem(hist[-1]['assistant']) if hist else ""
+                if last_stem and _is_semantically_similar_question(stem_new, last_stem):
+                    print("Allowing repeat due to clarification request")
+                    is_duplicate_question = False
+        
+        # 如果发现重复，记录日志并强制重新生成
+        if is_duplicate_question:
+            print(f"Detected duplicate question: {stem_new}")
+            print(f"Previous questions: {[qa['question'] for qa in sorted_qa]}")
+            # 强制重新生成新问题
+            # 获取重复的问题列表
+            # 获取所有重复的问题（包括问题文本相似或选项重叠的情况）
+            duplicate_questions = []
+            for qa in sorted_qa:
+                is_text_similar = _is_semantically_similar_question(stem_new, qa['question'])
+                is_options_similar = False
+                if opts_new and qa['options']:
+                    common_options = set(opts_new) & set(qa['options'])
+                    is_options_similar = len(common_options) >= min(len(opts_new), len(qa['options'])) * 0.7
+                
+                if is_text_similar or is_options_similar:
+                    duplicate_questions.append(qa)
+                    print(f"Found duplicate: {qa['question']}")
+                    print(f"  - Text similar: {is_text_similar}")
+                    print(f"  - Options similar: {is_options_similar}")
+                    if is_options_similar and opts_new and qa['options']:
+                        common_options = set(opts_new) & set(qa['options'])
+                        print(f"  - Common options: {common_options}")
+
+            correction_msg = [
+                "DUP_CHECK",
+                "错误：检测到重复问题。",
+                f"当前问题：{stem_new}",
+                "此问题与以下已问问题重复：",
+                *[f"- 问题：{qa['question']}\n  选项：{' | '.join(qa['options'])}" for qa in duplicate_questions],
+                "",
+                "要求：",
+                "1. 必须从本步 MUST_ASK_ITEMS 中选择一个尚未覆盖的问点",
+                "2. 新问题必须与已问清单中的所有问题有明显区别",
+                "3. 保持问题简洁（≤60字）并使用选项格式",
+                "4. 若本步所有问点都已覆盖，则应进入下一步",
+                "",
+                "提示：检查 MUST_ASK_ITEMS 列表，找出未被问过的问题。"
+            ]
+            correction = {
+                "role": "system",
+                "content": "\n".join(correction_msg)
+            }
+            messages = system_messages + [correction, {"role": "user", "content": message}]
+            
+            # 重新请求一次
+            payload_resend = {
+                'model': DEEPSEEK_MODEL,
+                'messages': messages,
+                'temperature': DS_TEMPERATURE,
+                'max_tokens': DS_MAX_TOKENS,
+                'top_p': DS_TOP_P
+            }
+            try:
+                response = requests.post(DEEPSEEK_URL, headers=headers, json=payload_resend, timeout=DS_TIMEOUT)
+            except requests.exceptions.SSLError:
+                headers['Connection'] = 'close'
+                response = requests.post(DEEPSEEK_URL, headers=headers, json=payload_resend, timeout=DS_TIMEOUT)
+            response.raise_for_status()
+            response_data = response.json()
+            ai_text = response_data['choices'][0]['message']['content']
+            
+            # 解析新响应
+            parsed = parse_llm_json(ai_text)
+            ra = parsed.get('Reasoning & Action') or parsed.get('reasoning_action') or ""
+            resp = parsed.get('Response') or parsed.get('response') or ai_text
+            step = parsed.get('step')
+            possible_diseases = parsed.get('possible_diseases')
+            
+            # 再次检查新生成的问题是否重复
+            stem_new, opts_new = _parse_response_question_and_options(resp)
+            is_still_duplicate, _ = _check_question_duplication(
+                resp, 
+                history[-STATE_HISTORY_RETURN_LAST_N:],
+                user_states[user_id].get('asked_questions', set())
+            )
         # 轻度规范化选项：若为明显二元是/否问题，则只保留 A.是 B.否，不添加“其它”
         def _normalize_yes_no(options: list) -> list:
             if not options:
@@ -1730,14 +1747,66 @@ def chat(current_user):
                 resp = stem_new + '？\n' + "\n".join(opts_new)
         # 若重复，构造系统纠错消息，要求模型重发一个未出现过且来自 MUST_ASK_ITEMS 的问点
         if is_duplicate_question:
-            correction = {
+            # 构造更详细的纠错提示
+            correction_msg = [
+                "DUP_CHECK - 重复问题检测",
+                "===== 错误信息 =====",
+                f"检测到重复问题：{stem_new}",
+                "",
+                "===== 禁止问题列表 =====",
+                "以下问题（及其语义相似变体）已经问过，严禁再次提问：",
+                *[f"{i+1}. 问题：{qa['question']}\n   选项：{' | '.join(qa['options'])}" for i, qa in enumerate(duplicate_questions)],
+                "",
+                "===== 强制要求 =====",
+                "1. 必须从本步 MUST_ASK_ITEMS 中选择一个未在上述列表中出现的问题",
+                "2. 新问题必须与上述所有问题在语义上有明显区别",
+                "3. 禁止通过改写、同义替换等方式复述上述任何问题",
+                "4. 保持问题简洁（≤60字）并使用选项格式",
+                "5. 若本步所有问点都已覆盖，必须直接进入下一步",
+                "",
+                "===== 操作指南 =====",
+                "1. 仔细检查 MUST_ASK_ITEMS 列表",
+                "2. 确认候选问题不在上述禁止列表中",
+                "3. 如果找不到新的未问过的问题，直接进入下一步",
+                "4. 不要尝试改写或变换已问过的问题",
+                "",
+                "===== 警告 =====",
+                "如果再次生成任何与上述列表中问题语义相似的问题，系统将强制结束当前步骤。"
+            ]
+            # 创建新的系统消息，替换原有的提示
+            new_system_messages = []
+            for msg in system_messages:
+                if msg["role"] == "system" and "MEDICAL_DATABASE" in msg["content"]:
+                    # 保留原始的医疗数据库信息，但添加问题生成规则
+                    content = msg["content"]
+                    rules_section = """
+===== 问题生成规则 =====
+1. 每次生成新问题前，必须检查"禁止问题列表"
+2. 严禁生成与禁止列表中任何问题语义相似的问题
+3. 禁止通过改写、同义替换等方式复述已问过的问题
+4. 新问题必须与已问问题在语义上有明显区别
+5. 如果找不到新的未问过的问题，必须直接进入下一步
+6. 违反上述规则将导致系统强制结束当前步骤
+
+注意：这些规则的优先级高于其他所有指令。即使其他指令要求询问某个方面，
+如果相关问题已在禁止列表中，也必须寻找其他未问过的问题或直接进入下一步。
+"""
+                    # 在 MEDICAL_DATABASE 之前插入规则
+                    insert_pos = content.find("# [MEDICAL_DATABASE]:")
+                    if insert_pos != -1:
+                        content = content[:insert_pos] + rules_section + content[insert_pos:]
+                    new_system_messages.append({"role": "system", "content": content})
+                elif msg["role"] == "system" and "DEMOGRAPHICS" in msg["content"]:
+                    # 保留人口统计信息
+                    new_system_messages.append(msg)
+            
+            # 添加强制性的纠错提示
+            new_system_messages.append({
                 "role": "system",
-                "content": (
-                    "DUP_CHECK\n当前问题与已问清单重复，请改为本步 MUST_ASK_ITEMS 中尚未覆盖的问点之一；"
-                    "禁止重复，并保持≤60字与选项格式。"
-                )
-            }
-            messages = system_messages + [correction, {"role": "user", "content": message}]
+                "content": "\n".join(correction_msg)
+            })
+            
+            messages = new_system_messages + [{"role": "user", "content": message}]
             # 重新请求一次
             payload_resend = {
                 'model': DEEPSEEK_MODEL,
@@ -1761,57 +1830,45 @@ def chat(current_user):
             possible_diseases = parsed2.get('possible_diseases') or possible_diseases
 
         # 保存本轮到简化历史（保留展示文+结构化） -> raw only
-        conversation_context[user_id].append({
-            'user': message,
-            'assistant': resp,
-            'assistant_ra': ra
-        })
+        # 如果不是重复问题才添加到历史记录
+        if not is_duplicate_question and not (is_still_duplicate if 'is_still_duplicate' in locals() else False):
+            conversation_context[user_id].append({
+                'user': message,
+                'assistant': resp,
+                'assistant_ra': ra
+            })
+            # 更新已问问题集合（包括持久化存储）
+            question_stem, options = _parse_response_question_and_options(resp)
+            if question_stem:
+                qa = {"question": question_stem, "options": options}
+                user_states[user_id].setdefault('asked_questions', []).append(qa)
+                # prev_stems 不再需要，因为我们现在使用 all_asked_qa 来跟踪所有问题
+
         if len(conversation_context[user_id]) > CONVO_HISTORY_LIMIT:
             conversation_context[user_id] = conversation_context[user_id][-CONVO_HISTORY_LIMIT:]
 
+        # 保存全局聊天记录供 Admin
         chat_record = {
             'userId': user_id,
             'userMessage': message,
-            'assistantMessage': resp,
-            'reasoningAction': ra,
-            'step': step,
-            'possible_diseases': possible_diseases,
+            'assistantMessage': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
         chat_records.append(chat_record)
         save_chat_records()
 
+        # ----------- 保存就诊历史 -----------
         patient_histories.setdefault(user_id, []).append({
             'user': message,
-            'assistant': resp,
-            'reasoningAction': ra,
+            'assistant': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
         save_patient_histories(patient_histories)
 
+        # Update last_seen again after processing
         online_users[user_id] = datetime.utcnow()
 
-        return jsonify({
-            'reasoningAction': ra,
-            'reasoning_action': ra,
-            'reasoning': ra,
-            'Reasoning & Action': ra,
-            'response': resp,
-            'step': step,
-            'possible_diseases': possible_diseases,
-            'summary': summary,
-            'debug': {
-                'groups': select_group_keys(state.get('age'), state.get('sex')) if state.get('demographics_known') and checklist else [],
-                'group_names': [checklist.get(g,{}).get('name') for g in select_group_keys(state.get('age'), state.get('sex'))] if state.get('demographics_known') and checklist else [],
-                'current_step': state.get('current_step', -1),
-                'injection_mode': injection_mode,
-                'user_keywords': user_keywords,
-                'ids_state': user_states[user_id].get('last_possible_ids', []),
-                'snippet_len': len(db_snippet),
-                'snippet_preview_first_lines': db_snippet.split('\n')[:12],
-                'no_db_match': no_db_match
-            }
-        })
+        return jsonify({'response': ai_response})
     except requests.exceptions.HTTPError as e:
         print(f'DeepSeek API HTTP Error: {e}')
         print(f'Response content: {response.text}')
@@ -1840,18 +1897,20 @@ def get_history(current_user):
 def clear_history_endpoint(current_user):
     username = current_user['username']
     
+    # ================= COMPLETE HISTORY CLEARANCE =================
+    # 1. Clear persistent history
     patient_histories[username] = []
     save_patient_histories(patient_histories)
     
+    # 2. Clear current session context
     if username in conversation_context:
         del conversation_context[username]
     
+    # 3. Clear chat records for admin view
     global chat_records
     chat_records = [r for r in chat_records if r['userId'] != username]
     save_chat_records()
-    
-    if username in user_states:
-        user_states[username] = {"current_step": -1, "demographics_known": False, "possible_diseases_paths": [], "age": None, "sex": None, "chief_complaints": [], "collected_answers": {}, "red_flags_checked": False, "history": []}
+    # ================= END FIX =================
     
     return jsonify({'success': True})
 
@@ -1918,45 +1977,7 @@ def clear_chat(current_user):
     if user_id in conversation_context:
         del conversation_context[user_id]
         print(f"Conversation history for {user_id} cleared")
-    if user_id in user_states:
-        user_states[user_id] = {"current_step": -1, "demographics_known": False, "possible_diseases_paths": [], "age": None, "sex": None, "chief_complaints": [], "collected_answers": {}, "red_flags_checked": False, "history": []}
     return jsonify({'success': True})
-
-# ---------- User demographics/state endpoints ----------
-
-@app.route('/api/user/state', methods=['GET'])
-@token_required
-def get_user_state(current_user):
-    user_id = current_user['username']
-    st = user_states[user_id]
-    return jsonify({
-        'age': st.get('age'),
-        'sex': st.get('sex'),
-        'demographics_known': st.get('demographics_known', False),
-        'current_step': st.get('current_step', -1)
-    })
-
-@app.route('/api/user/demographics', methods=['POST'])
-@token_required
-def set_user_demographics(current_user):
-    user_id = current_user['username']
-    data = request.get_json() or {}
-    age = data.get('age')
-    sex = data.get('sex')
-    try:
-        age = int(age) if age is not None else None
-    except Exception:
-        return jsonify({'success': False, 'message': 'Invalid age'}), 400
-    if sex not in ('男', '女'):
-        return jsonify({'success': False, 'message': 'Invalid sex'}), 400
-    st = user_states[user_id]
-    st['age'] = age
-    st['sex'] = sex
-    st['demographics_known'] = True
-    # Reset workflow to step=0 when demographics entered
-    st['current_step'] = 0
-    st['last_step'] = st['current_step']
-    return jsonify({'success': True, 'age': age, 'sex': sex, 'current_step': st['current_step']})
 
 # ----------------- Admin endpoints for medical db -----------------
 
@@ -1969,6 +1990,7 @@ def admin_medical_db():
     if not data:
         return jsonify({'message': 'Invalid payload'}), 400
 
+    # Accept both list and dict payloads from the admin panel
     if isinstance(data, list):
         save_med_db({"diseases": data})
     elif isinstance(data, dict) and 'diseases' in data:
@@ -1982,6 +2004,7 @@ def admin_medical_db():
 @app.route('/api/tool/disease_detail', methods=['POST'])
 @token_required
 def tool_disease_detail(current_user):
+    """Return full markdown details for a specific disease id (e.g., "A-1")."""
     data = request.get_json() or {}
     disease_id = str(data.get('id') or data.get('disease_id', '')).strip()
     if not disease_id:
@@ -1998,7 +2021,10 @@ def tool_disease_detail(current_user):
 
 # ----------------- User session helpers -----------------
 
+ONLINE_THRESHOLD_SEC = 1800  # 30 minutes
+
 def cleanup_online_users():
+    """Remove users who have been inactive for longer than threshold."""
     stale = [u for u, ts in online_users.items() if (datetime.utcnow() - ts).total_seconds() > ONLINE_THRESHOLD_SEC]
     for u in stale:
         del online_users[u]
@@ -2007,7 +2033,9 @@ def cleanup_online_users():
 @token_required
 def logout(current_user):
     username = current_user['username']
+    # Remove from online list
     online_users.pop(username, None)
+    # 持久化就诊历史
     save_patient_histories(patient_histories)
     return jsonify({'success': True})
 
@@ -2020,7 +2048,7 @@ def _chief_list(item):
     return cc if isinstance(cc, list) else []
 
 if __name__ == '__main__':
-    print(f"Starting Flask server on port {SERVER_PORT}...")
-    print(f"Test URL: http://localhost:{SERVER_PORT}/test")
+    print("Starting Flask server on port 5050...")
+    print("Test URL: http://localhost:5050/test")
     print(f"DeepSeek API Key loaded: {'Yes' if DEEPSEEK_API_KEY != 'YOUR_DEEPSEEK_API_KEY' else 'No - check .env file'}")
-    app.run(debug=SERVER_DEBUG, host=SERVER_HOST, port=SERVER_PORT) 
+    app.run(debug=True, host='0.0.0.0', port=5050) 

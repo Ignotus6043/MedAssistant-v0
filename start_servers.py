@@ -8,7 +8,7 @@ import time
 def run_flask():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     subprocess.run([sys.executable, 'app.py'])
-    # subprocess.run([sys.executable, 'cors_working.py'])
+    # subprocess.run([sys.executable, 'app_archive_002.py'])
 
 def run_frontend():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
