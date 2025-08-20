@@ -6,8 +6,8 @@
     <title>Chat - Medical Assistant</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="container chat-container-root">
+<body style="margin:0;height:100vh;overflow:hidden;">
+    <div class="container chat-container-root" style="height:100vh;display:flex;flex-direction:column;box-sizing:border-box;">
         <div class="chat-header">
             <h2 id="chatTitle">Medical Assistant Chat</h2>
             <div>
@@ -15,8 +15,8 @@
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
-        <div class="chat-container">
-            <div class="chat-messages" id="chatMessages">
+        <div class="chat-container" style="flex:1 1 auto;min-height:0;height:auto;display:flex;flex-direction:column;overflow:hidden;">
+            <div class="chat-messages" id="chatMessages" style="flex:1 1 auto;min-height:0;overflow:auto;">
                 <div class="message system">欢迎来到医疗助手！请问有什么可以帮助您的？</div>
             </div>
             <div class="chat-input">
