@@ -44,19 +44,8 @@
 
         // Dynamic API base URL for local and production
         const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
-
-        // If page was reloaded (navigation type reload), automatically clear backend context and local chat history
-        if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
-            localStorage.removeItem('chatHistory');
-            fetch(API_BASE + '/api/chat/clear', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({})
-            });
-        }
+        // Record whether this load is a reload; defer clearing until user choice is known
+        const __isReloadNav = performance.getEntriesByType('navigation')[0]?.type === 'reload';
 
         // inside <script> top add helper modal
         function showYNDialog(message) {
@@ -84,7 +73,7 @@
                 const token = localStorage.getItem('token');
                 if (!token) {
                     console.log('No token, skipping revisit check');
-                    return;
+                    return { isReturning: false };
                 }
                 
                 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
@@ -114,14 +103,24 @@
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
                             
+                            // Clear local chat history when starting new session
+                            localStorage.removeItem('chatHistory');
                             console.log('就诊历史已清除');
+                            return { isReturning: false };
+                        } else {
+                            // Keep everything as-is; do not clear anything
+                            console.log('保留就诊历史，继续当前诊疗流程');
+                            return { isReturning: true };
                         }
                     }
                 }
+                // No history found; treat as new session
+                return { isReturning: false };
             } catch (error) {
                 console.error('历史检查错误:', error);
                 // Fallback to ensure clean start
                 localStorage.removeItem('chatHistory');
+                return { isReturning: false };
             }
         }
 
@@ -260,6 +259,8 @@
             // Create collapsible reasoning box
             const detailsEl = document.createElement('details');
             detailsEl.style.margin = '10px';
+            // 默认展开，确保不隐藏任何 ReAct 步骤信息
+            detailsEl.open = true;
             const summaryEl = document.createElement('summary');
             summaryEl.innerHTML = '<b>Reasoning &amp; Action</b>';
             const preEl = document.createElement('pre');
@@ -315,27 +316,12 @@
             // Dynamic API base URL for local and production
             const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5050' : '';
 
-            // If page was reloaded (navigation type reload), automatically clear backend context and local chat history
-            if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
-                localStorage.removeItem('chatHistory');
-                fetch(API_BASE + '/api/chat/clear', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({})
-                });
-            }
+            // ================= HISTORY CHECK & CONDITIONAL CLEAR =================
+            const revisit = await checkRevisit();
+            // If this was a reload AND user chose to start new, ensure server context is clean (already done in checkRevisit)
+            // If user chose to keep, do not clear anything locally or remotely
 
-            // ================= GUARANTEED HISTORY CHECK =================
-            // First: Clear any existing local chat history
-            localStorage.removeItem('chatHistory');
-            
-            // Second: Check server-side history
-            await checkRevisit();  // This will now show the dialog
-            
-            // Third: Focus input after history check completes
+            // Focus input after history check completes
             document.getElementById('messageInput').focus();
             // ================= END FIX =================
 
