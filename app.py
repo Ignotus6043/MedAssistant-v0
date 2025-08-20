@@ -66,32 +66,62 @@ def _parse_options_from_action(action_block: str) -> tuple[str, dict]:
     question = ' '.join(question_parts).strip()
     return question, options_map
 
-def _augment_selection_with_text(user_message: str, last_assistant_text: str) -> str | None:
+def _augment_selection_with_text(user_message: str, last_assistant_text: str, user_id: str) -> str | None:
     """If the user_message looks like letter selection(s),
     map them to full option texts from the last assistant '行动' block and
     return an augmented message. Otherwise return None.
-    Supports inputs like 'C', 'A,B', 'A C', 'ACE', '选C', '选择B、E'.
+    Supports inputs like:
+    - Simple selection: 'A', 'A,B', 'A C', 'ACE'
+    - With 选: '选C', '选择B、E'
+    - With description: 'A B D 我有持续性钝痛' (D为其它选项时)
     """
     if not user_message or not last_assistant_text:
         return None
+    
     raw = user_message.strip()
-    # Extract letters A-F (or broader A-Z) possibly separated by non-letter symbols
+    
+    # 1. 提取选项字母
     letters = re.findall(r'[A-Fa-f]', raw)
-    # Also support patterns like '选C' / '选择C'
-    if not letters:
+    if not letters:  # 尝试处理"选C"格式
         sel = re.findall(r'(?:选|选择)\s*([A-Fa-f](?:[、,\s]+[A-Fa-f])*)', raw)
         if sel:
             letters = re.findall(r'[A-Fa-f]', sel[-1])
+    
     unique_letters = [ch.upper() for ch in letters]
-    if not unique_letters:
+    if not unique_letters:  # 没有找到任何选项字母
         return None
-    # Do not trigger if the message also contains non-trivial words (to avoid false positives)
-    if len(raw) > 12 and re.search(r'[\u4e00-\u9fa5A-Za-z]{2,}', raw):
-        return None
+        
+    # 2. 获取问题和选项映射
     action_block = _extract_question_block(last_assistant_text)
     question, options_map = _parse_options_from_action(action_block)
-    if not options_map:
+    if not options_map:  # 没有找到选项映射
         return None
+    
+    # 3. 检查选项是否有效
+    if not all(letter in options_map for letter in unique_letters):  # 存在无效选项
+        return None
+    
+    # 4. 检查是否包含"其它"选项并提取描述
+    other_letter = None
+    for letter in unique_letters:
+        if '其它' in options_map[letter] or '其他' in options_map[letter]:
+            other_letter = letter
+            break
+    
+    # 如果选了"其它"选项，提取用户的描述
+    other_description = None
+    if other_letter:
+        # 提取选项后的所有文本作为描述
+        after_letters = re.split(r'[A-Fa-f][,\s]*', raw)[-1].strip()
+        if after_letters and len(after_letters) > 2:  # 确保有足够的描述文本
+            other_description = after_letters
+        
+    # 记录这个问题到全局列表中
+    if question:
+        if user_id not in asked_questions:
+            asked_questions[user_id] = []
+        if question not in asked_questions[user_id]:
+            asked_questions[user_id].append(question)
     selected_texts = []
     symptoms_chosen = []
     symptoms_not_chosen = []
@@ -101,7 +131,16 @@ def _augment_selection_with_text(user_message: str, last_assistant_text: str) ->
         if opt_letter in unique_letters:
             if '无上述症状' in opt_text:
                 symptoms_not_chosen.extend([options_map[k] for k in options_map if k != opt_letter and k not in unique_letters])
-            elif '其它' not in opt_text and '其他' not in opt_text:
+            elif '其它' in opt_text or '其他' in opt_text:
+                # 如果这个选项是"其它"且有描述
+                if opt_letter == other_letter and other_description:
+                    symptoms_chosen.append(f"{opt_text}：{other_description}")
+                    selected_texts.append(f"{opt_letter}. {opt_text}：{other_description}")
+                else:
+                    symptoms_chosen.append(opt_text)
+                    selected_texts.append(f"{opt_letter}. {opt_text}")
+            else:
+                # 非"其它"选项直接使用原文本
                 symptoms_chosen.append(opt_text)
                 selected_texts.append(f"{opt_letter}. {opt_text}")
         elif '其它' not in opt_text and '其他' not in opt_text and '无上述症状' not in opt_text:
@@ -163,6 +202,7 @@ ADMIN_EMAIL, ADMIN_PW_HASH = load_admin_credentials()
 
 # In-memory trackers
 conversation_context = {}  # {username: [history]}
+asked_questions = {}      # {username: [list of asked questions]}
 
 # Persistent chat history -----------------
 CHAT_HISTORY_FILE = 'chat_history.json'
@@ -529,8 +569,8 @@ def chat(current_user):
     
     # 若用户输入为选项字母（A/B/C...），将其映射为完整文本，避免模型误解
     last_assistant = history[-1]['assistant'] if history else ''
-    augmented = _augment_selection_with_text(message, last_assistant)
-    print(f"哈哈哈哈哈哈哈哈哈Augmented user message: {augmented}")
+    augmented = _augment_selection_with_text(message, last_assistant, user_id)
+    print(f"Augmented user message: {augmented}")
     final_user_message = augmented or message
 
     # 生成历史文本
@@ -551,7 +591,11 @@ def chat(current_user):
 
     patient_block = f"该用户此前的就诊历史：{pat_text}"
 
-    system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}"
+    # 添加已问过的问题列表
+    asked_list = asked_questions.get(user_id, [])
+    asked_reminder = "（以下问题已询问过，请勿重复：" + "、".join(asked_list) + "）" if asked_list else ""
+    
+    system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}\n\n{asked_reminder}"
 
     messages = [
         {"role": "system", "content": get_initial_prompt()},
