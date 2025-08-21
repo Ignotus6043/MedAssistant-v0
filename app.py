@@ -87,19 +87,35 @@ def _augment_selection_with_text(user_message: str, last_assistant_text: str, us
         if sel:
             letters = re.findall(r'[A-Fa-f]', sel[-1])
     
+    
     unique_letters = [ch.upper() for ch in letters]
-    if not unique_letters:  # 没有找到任何选项字母
-        return None
-        
+    
     # 2. 获取问题和选项映射
     action_block = _extract_question_block(last_assistant_text)
     question, options_map = _parse_options_from_action(action_block)
-    if not options_map:  # 没有找到选项映射
-        return None
+    found_no_symptoms_option = False
+    for letter, text in options_map.items():
+        if '无上述症状' in text:
+            unique_letters = [letter]
+            found_no_symptoms_option = True
+            break
+    if not found_no_symptoms_option:
+        no_symptoms_patterns = ['无上述症状', '没有上述症状', '无此类症状', '没有这些症状', '无相关症状']
+        is_no_symptoms = any(pattern in raw for pattern in no_symptoms_patterns)
+        if not is_no_symptoms:
+            return None
+        else:# 如果没有"无上述症状"选项，但用户表达了无症状，手动添加所有症状到not_chosen
+            symptoms_not_chosen = []
+            for text in options_map.values():
+                if ('无上述症状' not in text and '其他' not in text):  # 排除"其它"选项
+                    symptoms_not_chosen.append(text)
+            # 构建一个表达用户无症状的返回信息
+            return f"用户表示没有任何上述症状。已确认没有以下症状：{', '.join(symptoms_not_chosen)}"
+
     
     # 3. 检查选项是否有效
     if not all(letter in options_map for letter in unique_letters):  # 存在无效选项
-        return None
+        return "用户选择了无效选项，请务必提示用户重新选择"
     
     # 4. 检查是否包含"其它"选项并提取描述
     other_letter = None
@@ -131,6 +147,7 @@ def _augment_selection_with_text(user_message: str, last_assistant_text: str, us
         if opt_letter in unique_letters:
             if '无上述症状' in opt_text:
                 symptoms_not_chosen.extend([options_map[k] for k in options_map if k != opt_letter and k not in unique_letters])
+                selected_texts.append(f"{opt_letter}. {opt_text}")
             elif '其它' in opt_text or '其他' in opt_text:
                 # 如果这个选项是"其它"且有描述
                 if opt_letter == other_letter and other_description:
@@ -143,8 +160,9 @@ def _augment_selection_with_text(user_message: str, last_assistant_text: str, us
                 # 非"其它"选项直接使用原文本
                 symptoms_chosen.append(opt_text)
                 selected_texts.append(f"{opt_letter}. {opt_text}")
-        elif '其它' not in opt_text and '其他' not in opt_text and '无上述症状' not in opt_text:
+        elif ('其它' not in opt_text) and ('无上述症状' not in opt_text):
             symptoms_not_chosen.append(opt_text)
+            print(f"哈哈哈: {opt_text}")
     
     if not selected_texts:
         return None
