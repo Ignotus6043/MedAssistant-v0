@@ -43,16 +43,35 @@ def _extract_question_block(text: str) -> str:
     
     return last_match.group(1) if last_match else ""
 
+def _parse_user_selection(user_input: str, options_map: dict) -> list:
+    """Parse user input to get selected option letters.
+    Returns list of valid option letters that exist in options_map.
+    """
+    if not user_input or not options_map:
+        return []
+    
+    # 直接匹配字母
+    letters = re.findall(r'[A-Z]', user_input.upper())
+    if not letters:  # 尝试处理"选C"格式
+        sel = re.findall(r'(?:选|选择)\s*([A-Z](?:[、,\s]+[A-Z])*)', user_input.upper())
+        if sel:
+            letters = re.findall(r'[A-Z]', sel[-1])
+    
+    # 只返回在options_map中存在的字母
+    return [letter for letter in letters if letter in options_map]
+
 def _parse_options_from_action(action_block: str) -> tuple[str, dict]:
     """Parse question and options from an action block.
     Returns (question_text, { 'A': 'xxx', 'B': 'yyy', ... })
     """
     if not action_block:
         return "", {}
+    
     lines = [ln.strip() for ln in action_block.splitlines() if ln.strip()]
     question_parts = []
     options_map = {}
     option_re = re.compile(r'^([A-Za-z])[\.\)．、]\s*(.+)$')
+    
     for ln in lines:
         m = option_re.match(ln)
         if m:
@@ -63,6 +82,7 @@ def _parse_options_from_action(action_block: str) -> tuple[str, dict]:
             # Collect as question text until options begin
             if not options_map:
                 question_parts.append(ln)
+    
     question = ' '.join(question_parts).strip()
     return question, options_map
 
@@ -80,31 +100,23 @@ def _augment_selection_with_text(user_message: str, last_assistant_text: str, us
     
     raw = user_message.strip()
     
-    # 1. 提取选项字母
-    letters = re.findall(r'[A-Fa-f]', raw)
-    if not letters:  # 尝试处理"选C"格式
-        sel = re.findall(r'(?:选|选择)\s*([A-Fa-f](?:[、,\s]+[A-Fa-f])*)', raw)
-        if sel:
-            letters = re.findall(r'[A-Fa-f]', sel[-1])
-    
-    
-    unique_letters = [ch.upper() for ch in letters]
-    
-    # 2. 获取问题和选项映射
+    # 获取问题和选项映射
     action_block = _extract_question_block(last_assistant_text)
     question, options_map = _parse_options_from_action(action_block)
+    
+    # 解析用户选择的选项
+    unique_letters = _parse_user_selection(raw, options_map)
     found_no_symptoms_option = False
     for letter, text in options_map.items():
         if '无上述症状' in text:
-            unique_letters = [letter]
             found_no_symptoms_option = True
             break
     if not found_no_symptoms_option:
         no_symptoms_patterns = ['无上述症状', '没有上述症状', '无此类症状', '没有这些症状', '无相关症状']
         is_no_symptoms = any(pattern in raw for pattern in no_symptoms_patterns)
-        if not is_no_symptoms:
+        if (not is_no_symptoms) and (not options_map):
             return None
-        else:# 如果没有"无上述症状"选项，但用户表达了无症状，手动添加所有症状到not_chosen
+        elif is_no_symptoms:# 如果没有"无上述症状"选项，但用户表达了无症状，手动添加所有症状到not_chosen
             symptoms_not_chosen = []
             for text in options_map.values():
                 if ('无上述症状' not in text and '其他' not in text):  # 排除"其它"选项
@@ -162,7 +174,7 @@ def _augment_selection_with_text(user_message: str, last_assistant_text: str, us
                 selected_texts.append(f"{opt_letter}. {opt_text}")
         elif ('其它' not in opt_text) and ('无上述症状' not in opt_text):
             symptoms_not_chosen.append(opt_text)
-            print(f"哈哈哈: {opt_text}")
+            print(f"用户表示没有以下症状: {opt_text}")
     
     if not selected_texts:
         return None
