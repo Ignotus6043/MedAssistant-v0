@@ -1,3 +1,4 @@
+import re
 from flask import Flask, request, jsonify, send_from_directory
 import bcrypt
 import jwt
@@ -15,6 +16,186 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Allow all origins for testing
+
+# ----------------- Option parsing helpers -----------------
+
+def _extract_question_block(text: str) -> str:
+    """Return the content that contains the question and options.
+    Looks for a question followed by A/B/C options anywhere in the text.
+    """
+    if not isinstance(text, str) or not text:
+        return ""
+    
+    # Find a question followed by lettered options
+    # Pattern: 
+    # 1. Question line (ends with optional "（可多选）")
+    # 2. Followed by multiple lines starting with A./B./C. etc
+    matches = re.finditer(
+        r'(?:^|\n)([^\n]+?(?:（可多选）)?[\n]'  # Question line
+        r'(?:[A-Z][\.\)．、]\s*[^\n]+[\n]?)+)',  # Option lines
+        text
+    )
+    
+    # Take the last match (most recent question)
+    last_match = None
+    for match in matches:
+        last_match = match
+    
+    return last_match.group(1) if last_match else ""
+
+def _parse_user_selection(user_input: str, options_map: dict) -> list:
+    """Parse user input to get selected option letters.
+    Returns list of valid option letters that exist in options_map.
+    """
+    if not user_input or not options_map:
+        return []
+    
+    # 直接匹配字母
+    letters = re.findall(r'[A-Z]', user_input.upper())
+    if not letters:  # 尝试处理"选C"格式
+        sel = re.findall(r'(?:选|选择)\s*([A-Z](?:[、,\s]+[A-Z])*)', user_input.upper())
+        if sel:
+            letters = re.findall(r'[A-Z]', sel[-1])
+    
+    # 只返回在options_map中存在的字母
+    return [letter for letter in letters if letter in options_map]
+
+def _parse_options_from_action(action_block: str) -> tuple[str, dict]:
+    """Parse question and options from an action block.
+    Returns (question_text, { 'A': 'xxx', 'B': 'yyy', ... })
+    """
+    if not action_block:
+        return "", {}
+    
+    lines = [ln.strip() for ln in action_block.splitlines() if ln.strip()]
+    question_parts = []
+    options_map = {}
+    option_re = re.compile(r'^([A-Za-z])[\.\)．、]\s*(.+)$')
+    
+    for ln in lines:
+        m = option_re.match(ln)
+        if m:
+            letter = m.group(1).upper()
+            if letter >= 'A' and letter <= 'Z':
+                options_map[letter] = m.group(2).strip()
+        else:
+            # Collect as question text until options begin
+            if not options_map:
+                question_parts.append(ln)
+    
+    question = ' '.join(question_parts).strip()
+    return question, options_map
+
+def _augment_selection_with_text(user_message: str, last_assistant_text: str, user_id: str) -> str | None:
+    """If the user_message looks like letter selection(s),
+    map them to full option texts from the last assistant '行动' block and
+    return an augmented message. Otherwise return None.
+    Supports inputs like:
+    - Simple selection: 'A', 'A,B', 'A C', 'ACE'
+    - With 选: '选C', '选择B、E'
+    - With description: 'A B D 我有持续性钝痛' (D为其它选项时)
+    """
+    if not user_message or not last_assistant_text:
+        return None
+    
+    raw = user_message.strip()
+    
+    # 获取问题和选项映射
+    action_block = _extract_question_block(last_assistant_text)
+    question, options_map = _parse_options_from_action(action_block)
+    
+    # 解析用户选择的选项
+    unique_letters = _parse_user_selection(raw, options_map)
+    found_no_symptoms_option = False
+    for letter, text in options_map.items():
+        if '无上述症状' in text:
+            found_no_symptoms_option = True
+            break
+    if not found_no_symptoms_option:
+        no_symptoms_patterns = ['无上述症状', '没有上述症状', '无此类症状', '没有这些症状', '无相关症状']
+        is_no_symptoms = any(pattern in raw for pattern in no_symptoms_patterns)
+        if (not is_no_symptoms) and (not options_map):
+            return None
+        elif is_no_symptoms:# 如果没有"无上述症状"选项，但用户表达了无症状，手动添加所有症状到not_chosen
+            symptoms_not_chosen = []
+            for text in options_map.values():
+                if ('无上述症状' not in text and '其他' not in text):  # 排除"其它"选项
+                    symptoms_not_chosen.append(text)
+            # 构建一个表达用户无症状的返回信息
+            return f"用户表示没有任何上述症状。已确认没有以下症状：{', '.join(symptoms_not_chosen)}"
+
+    
+    # 3. 检查选项是否有效
+    if not all(letter in options_map for letter in unique_letters):  # 存在无效选项
+        return "用户选择了无效选项，请务必提示用户重新选择"
+    
+    # 4. 检查是否包含"其它"选项并提取描述
+    other_letter = None
+    for letter in unique_letters:
+        if '其它' in options_map[letter] or '其他' in options_map[letter]:
+            other_letter = letter
+            break
+    
+    # 如果选了"其它"选项，提取用户的描述
+    other_description = None
+    if other_letter:
+        # 提取选项后的所有文本作为描述
+        after_letters = re.split(r'[A-Fa-f][,\s]*', raw)[-1].strip()
+        if after_letters and len(after_letters) > 2:  # 确保有足够的描述文本
+            other_description = after_letters
+        
+    # 记录这个问题到全局列表中
+    if question:
+        if user_id not in asked_questions:
+            asked_questions[user_id] = []
+        if question not in asked_questions[user_id]:
+            asked_questions[user_id].append(question)
+    selected_texts = []
+    symptoms_chosen = []
+    symptoms_not_chosen = []
+    
+    # 收集已选和未选症状
+    for opt_letter, opt_text in options_map.items():
+        if opt_letter in unique_letters:
+            if '无上述症状' in opt_text:
+                symptoms_not_chosen.extend([options_map[k] for k in options_map if k != opt_letter and k not in unique_letters])
+                selected_texts.append(f"{opt_letter}. {opt_text}")
+            elif '其它' in opt_text or '其他' in opt_text:
+                # 如果这个选项是"其它"且有描述
+                if opt_letter == other_letter and other_description:
+                    symptoms_chosen.append(f"{opt_text}：{other_description}")
+                    selected_texts.append(f"{opt_letter}. {opt_text}：{other_description}")
+                else:
+                    symptoms_chosen.append(opt_text)
+                    selected_texts.append(f"{opt_letter}. {opt_text}")
+            else:
+                # 非"其它"选项直接使用原文本
+                symptoms_chosen.append(opt_text)
+                selected_texts.append(f"{opt_letter}. {opt_text}")
+        elif ('其它' not in opt_text) and ('无上述症状' not in opt_text):
+            symptoms_not_chosen.append(opt_text)
+            print(f"用户表示没有以下症状: {opt_text}")
+    
+    if not selected_texts:
+        return None
+    
+    status = []
+    if symptoms_chosen:
+        status.append(f"已确认有以下症状：{', '.join(symptoms_chosen)}")
+    if symptoms_not_chosen:
+        status.append(f"已确认没有以下症状：{', '.join(symptoms_not_chosen)}")
+        
+    # 原始选择 + 症状总结
+    status_text = ' '.join(status) if status else ''
+    reminder = "（以上症状和问题已明确确认，无需重复询问）" if status else ""
+      
+    if question:
+        return (
+              f"用户的选择：{'，'.join(selected_texts)}（对应问题：{question}）。\n"
+              f"{status_text}。{reminder}"
+          )
+      
+    return f"用户的选择：{'，'.join(selected_texts)}。\n{status_text}。{reminder}"
 
 @app.after_request
 def after_request(response):
@@ -51,6 +232,7 @@ ADMIN_EMAIL, ADMIN_PW_HASH = load_admin_credentials()
 
 # In-memory trackers
 conversation_context = {}  # {username: [history]}
+asked_questions = {}      # {username: [list of asked questions]}
 
 # Persistent chat history -----------------
 CHAT_HISTORY_FILE = 'chat_history.json'
@@ -414,6 +596,12 @@ def chat(current_user):
         conversation_context[user_id] = []  # 存储每轮 {user, assistant}
 
     history = conversation_context[user_id]
+    
+    # 若用户输入为选项字母（A/B/C...），将其映射为完整文本，避免模型误解
+    last_assistant = history[-1]['assistant'] if history else ''
+    augmented = _augment_selection_with_text(message, last_assistant, user_id)
+    print(f"Augmented user message: {augmented}")
+    final_user_message = augmented or message
 
     # 生成历史文本
     history_lines = []
@@ -433,12 +621,16 @@ def chat(current_user):
 
     patient_block = f"该用户此前的就诊历史：{pat_text}"
 
-    system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}"
+    # 添加已问过的问题列表
+    asked_list = asked_questions.get(user_id, [])
+    asked_reminder = "（以下问题已询问过，请勿重复：" + "、".join(asked_list) + "）" if asked_list else ""
+    
+    system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}\n\n{asked_reminder}"
 
     messages = [
         {"role": "system", "content": get_initial_prompt()},
         {"role": "system", "content": system_history},
-        {"role": "user", "content": message}
+        {"role": "user", "content": final_user_message}
     ]
 
     url = 'https://api.deepseek.com/v1/chat/completions'
@@ -476,7 +668,7 @@ def chat(current_user):
 
         # 保存本轮对话到历史
         conversation_context[user_id].append({
-            'user': message,
+            'user': final_user_message,
             'assistant': ai_response
         })
         
@@ -487,7 +679,7 @@ def chat(current_user):
         # 保存全局聊天记录供 Admin
         chat_record = {
             'userId': user_id,
-            'userMessage': message,
+            'userMessage': final_user_message,
             'assistantMessage': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
@@ -496,7 +688,7 @@ def chat(current_user):
 
         # ----------- 保存就诊历史 -----------
         patient_histories.setdefault(user_id, []).append({
-            'user': message,
+            'user': final_user_message,
             'assistant': ai_response,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
