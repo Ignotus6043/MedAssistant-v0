@@ -233,6 +233,8 @@ ADMIN_EMAIL, ADMIN_PW_HASH = load_admin_credentials()
 # In-memory trackers
 conversation_context = {}  # {username: [history]}
 asked_questions = {}      # {username: [list of asked questions]}
+# Lightweight in-memory demographics cache: {username: {'age': int|None, 'sex': '男'|'女'|None}}
+user_demographics = {}
 
 # Persistent chat history -----------------
 CHAT_HISTORY_FILE = 'chat_history.json'
@@ -375,9 +377,27 @@ def build_med_db_full_text(db):
 
 # Override get_initial_prompt to inject only overview
 
-def get_initial_prompt():
+def get_initial_prompt(age: int | None = None, sex: str | None = None):
     with open('prompt_react_cn.txt', 'r', encoding='utf-8') as f:
         template = f.read()
+    # Inject demographics if provided
+    if age is not None:
+        try:
+            age_int = int(age)
+            if 0 <= age_int <= 120:
+                template = template.replace('[Age]', str(age_int))
+        except Exception:
+            pass
+    if isinstance(sex, str) and sex.strip():
+        # Normalize to 男/女
+        sx = sex.strip()
+        sx_lower = sx.lower()
+        if sx_lower in ('male', 'm'):
+            sx = '男'
+        elif sx_lower in ('female', 'f'):
+            sx = '女'
+        template = template.replace('[Sex]', sx)
+    # Inject medical DB overview
     db_data = load_med_db()
     overview_text = build_med_db_overview_text(db_data)
     if '[MEDICAL_DATABASE]' in template:
@@ -627,8 +647,13 @@ def chat(current_user):
     
     system_history = f"{concise_rule}\n\n{patient_block}\n\n以下是此前对话历史：\n{history_text}\n\n{asked_reminder}"
 
+    # Try to pull cached demographics if present in prior messages
+    demo = user_demographics.get(user_id, {})
+    age_for_prompt = demo.get('age')
+    sex_for_prompt = demo.get('sex')
+
     messages = [
-        {"role": "system", "content": get_initial_prompt()},
+        {"role": "system", "content": get_initial_prompt(age_for_prompt, sex_for_prompt)},
         {"role": "system", "content": system_history},
         {"role": "user", "content": final_user_message}
     ]
@@ -665,6 +690,22 @@ def chat(current_user):
 
         ai_response = response_data['choices'][0]['message']['content']
         print("DeepSeek responded successfully")
+
+        # 在 AI 文本中解析年龄/性别，若出现则缓存，供下一轮 prompt 注入
+        try:
+            age_match = re.search(r'(?:年龄|Age)[:：]?\s*(\d{1,3})', ai_response)
+            sex_match = re.search(r'(?:性别|Sex)[:：]?\s*([男女]|male|female|M|F)', ai_response, flags=re.I)
+            if age_match:
+                age_val = int(age_match.group(1))
+                if 0 <= age_val <= 120:
+                    user_demographics.setdefault(user_id, {}).update({'age': age_val})
+            if sex_match:
+                sx = sex_match.group(1)
+                sx_norm = '女' if str(sx).lower() in ('female', 'f', '女') else ('男' if str(sx).lower() in ('male','m','男') else None)
+                if sx_norm:
+                    user_demographics.setdefault(user_id, {}).update({'sex': sx_norm})
+        except Exception as _e:
+            print('Demographics parse skipped:', _e)
 
         # 保存本轮对话到历史
         conversation_context[user_id].append({
